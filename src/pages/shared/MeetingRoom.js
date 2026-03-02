@@ -26,7 +26,10 @@ export default function MeetingRoom() {
     }, [id, meetingDetails.meetLink]);
 
     const handleJoin = () => {
-        if (!meetingDetails.meetLink) return;
+        if (!meetingDetails.meetLink) {
+            alert("No meeting link found. Please try starting the call again.");
+            return;
+        }
         
         setIsJoining(true);
         setHasJoined(true);
@@ -36,42 +39,47 @@ export default function MeetingRoom() {
         
         // Initialize Jitsi IFrame API
         setTimeout(() => {
+            const domain = 'meet.jit.si';
+            
+            // Check if API is already loaded in window
             if (window.JitsiMeetExternalAPI && jitsiRef.current) {
-                const domain = 'meet.jit.si';
-                const options = {
-                    roomName: roomName,
-                    width: '100%',
-                    height: '100%',
-                    parentNode: jitsiRef.current,
-                    configOverwrite: {
-                        startWithAudioMuted: false,
-                        startWithVideoMuted: false,
-                        prejoinPageEnabled: false,
-                        p2p: { enabled: false },
-                        enableLobby: false, // Attempt to disable lobby feature if it tries to turn on
-                    },
-                    interfaceConfigOverwrite: {
-                        // Customize the UI here if needed
-                    },
-                    userInfo: {
-                        displayName: userProfile?.name || 'Worqit User'
-                    }
-                };
-                const api = new window.JitsiMeetExternalAPI(domain, options);
-                
-                // Add event listeners for cleanup
-                api.addEventListeners({
-                    readyToClose: () => {
-                        navigate(-1);
-                    },
-                    videoConferenceLeft: () => {
-                        navigate(-1);
-                    }
-                });
+                try {
+                    const options = {
+                        roomName: roomName,
+                        width: '100%',
+                        height: '100%',
+                        parentNode: jitsiRef.current,
+                        configOverwrite: {
+                            startWithAudioMuted: false,
+                            startWithVideoMuted: false,
+                            prejoinPageEnabled: false,
+                            p2p: { enabled: false },
+                            enableLobby: false,
+                        },
+                        interfaceConfigOverwrite: {
+                            // Customize the UI here if needed
+                        },
+                        userInfo: {
+                            displayName: userProfile?.name || 'Worqit User'
+                        }
+                    };
+                    const api = new window.JitsiMeetExternalAPI(domain, options);
+                    
+                    api.addEventListeners({
+                        readyToClose: () => navigate(-1),
+                        videoConferenceLeft: () => navigate(-1)
+                    });
+                } catch (err) {
+                    console.error("Jitsi IFrame Error:", err);
+                    setHasJoined(false);
+                    alert("Failed to load video call. Opening in new tab instead.");
+                    window.open(meetingDetails.meetLink, '_blank');
+                }
             } else {
-                // Fallback to old behavior if API script failed to load
-                window.open(meetingDetails.meetLink, '_blank', 'noopener,noreferrer');
-                navigate('/hirer');
+                // FALLBACK: If the <script> tag failed or isn't ready, open in new tab
+                console.warn("Jitsi API not found. Falling back to new tab.");
+                window.open(meetingDetails.meetLink, '_blank');
+                navigate(-1);
             }
             setIsJoining(false);
         }, 500);

@@ -19,21 +19,22 @@ export const requestPushPermission = async (userId) => {
     try {
         const permission = await Notification.requestPermission();
         if (permission === "granted") {
-            const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
-            if (currentToken) {
-                // Save the token to Firestore under the user's profile
-                await saveTokenToFirestore(userId, currentToken);
-                return true;
-            } else {
-                console.log("No registration token available. Request permission to generate one.");
+            // ONLY try to get token if VAPID_KEY is present and valid
+            if (!VAPID_KEY || VAPID_KEY.length < 20) {
+                console.warn("Push Notification skipped: No valid VAPID_KEY provided.");
                 return false;
             }
-        } else {
-            console.log("Unable to get permission to notify.");
-            return false;
+
+            const currentToken = await getToken(messaging, { vapidKey: VAPID_KEY });
+            if (currentToken) {
+                await saveTokenToFirestore(userId, currentToken);
+                return true;
+            }
         }
+        return false;
     } catch (err) {
-        console.error("An error occurred while retrieving token. ", err);
+        // CRITICAL: We catch the error but don't let it crash the app!
+        console.error("Push Notification Error (Ignored to prevent crash):", err.message);
         return false;
     }
 };
