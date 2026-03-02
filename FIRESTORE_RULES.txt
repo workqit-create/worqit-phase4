@@ -1,0 +1,130 @@
+// WORQIT — FIRESTORE SECURITY RULES — PHASE 4
+// Paste this into Firebase Console → Firestore → Rules → Publish
+// ================================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper: is this request from an admin? ───────────
+    function isAdmin() {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.userType == "admin";
+    }
+
+    // ── Users ────────────────────────────────────────────
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+        (request.auth.uid == userId || isAdmin());
+    }
+
+    // ── Waitlist ─────────────────────────────────────────
+    match /waitlist/{docId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ── Founding 100 ─────────────────────────────────────
+    match /founding100/{docId} {
+      allow create: if true;
+      allow read: if request.auth != null;
+      allow update, delete: if isAdmin();
+    }
+
+    // ── Jobs ─────────────────────────────────────────────
+    match /jobs/{jobId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null &&
+        (request.auth.uid == resource.data.hirerId || isAdmin());
+    }
+
+    // ── Applications ─────────────────────────────────────
+    match /applications/{appId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.candidateId ||
+         request.auth.uid == resource.data.hirerId || isAdmin());
+      allow update: if request.auth != null &&
+        (request.auth.uid == resource.data.hirerId || isAdmin());
+    }
+
+    // ── Connections (candidate ↔ candidate) ──────────────
+    match /connections/{connId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.requesterId ||
+         request.auth.uid == resource.data.receiverId || isAdmin());
+      allow update: if request.auth != null &&
+        (request.auth.uid == resource.data.receiverId || isAdmin());
+    }
+
+    // ── Conversations ─────────────────────────────────────
+    match /conversations/{convId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null &&
+        (resource == null || request.auth.uid in resource.data.participants || isAdmin());
+      allow update, delete: if request.auth != null &&
+        (request.auth.uid in resource.data.participants || isAdmin());
+
+      match /messages/{msgId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+
+    // ── Admin actions log ────────────────────────────────
+    match /adminActions/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ── Documents (Phase 7 Document Hub) ────────────────
+    match /documents/{docId} {
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.candidateId;
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.candidateId ||
+         resource.data.visibility == "public" || 
+         (resource.data.visibility == "shared" && request.auth.uid in resource.data.sharedWith) || 
+         isAdmin());
+      allow update, delete: if request.auth != null &&
+        (request.auth.uid == resource.data.candidateId || isAdmin());
+    }
+
+    // ── Document Requests (Phase 7) ───────────────────────
+    match /documentRequests/{reqId} {
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.hirerId;
+      allow read, update: if request.auth != null &&
+        (request.auth.uid == resource.data.hirerId || 
+         request.auth.uid == resource.data.candidateId || 
+         isAdmin());
+      allow delete: if request.auth != null &&
+        (request.auth.uid == resource.data.hirerId || isAdmin());
+    }
+
+    // ── Notifications ────────────────────────────────────────
+    match /notifications/{notifId} {
+      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null;
+    }
+
+    // ── Job Alerts (Phase 9) ─────────────────────────────────
+    match /jobAlerts/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+
+// ── Storage Security Rules (for Phase 7) ───────────────
+// Copy these separately into Firebase Console -> Storage -> Rules
+// rules_version = '2';
+// service firebase.storage {
+//   match /b/{bucket}/o {
+//     match /documents/{candidateId}/{fileName} {
+//       // Only the candidate can upload their own files
+//       allow write: if request.auth != null && request.auth.uid == candidateId;
+//       // Read requires auth. Ideally would match Firestore rules, but standard setup allows 
+//       // authenticated users to read if they have the token URL generated by the App
+//       allow read: if request.auth != null; 
+//     }
+//   }
+// }
