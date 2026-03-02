@@ -90,8 +90,12 @@ app.get('/api/auth/status', (req, res) => {
 // Create Video Call Link Endpoint (Using Jitsi for immediate, verification-free calls)
 app.post('/api/create-call', async (req, res) => {
     try {
-        // Generate a random, unique Jitsi Meet room name (lowercase for Jitsi compatibility)
-        const roomName = `worqit-${crypto.randomUUID().replace(/-/g, '').substring(0, 24)}`;
+        // Generate an extremely unique Jitsi Meet room name
+        // We use a long random string + timestamp to ensure it's never been used before
+        // This avoids the "membersOnly" lobby error on public Jitsi servers
+        const timestamp = Date.now().toString(36);
+        const randomStr = crypto.randomBytes(16).toString('hex');
+        const roomName = `v-call-${timestamp}-${randomStr}`;
         const meetLink = `https://meet.jit.si/${roomName}`;
 
         res.json({ meetLink });

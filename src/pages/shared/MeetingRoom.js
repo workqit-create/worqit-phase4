@@ -47,7 +47,8 @@ export default function MeetingRoom() {
                         startWithAudioMuted: false,
                         startWithVideoMuted: false,
                         prejoinPageEnabled: false,
-                        p2p: { enabled: false }, // Force JVB to avoid P2P negotiation issues
+                        p2p: { enabled: false },
+                        enableLobby: false, // Attempt to disable lobby feature if it tries to turn on
                     },
                     interfaceConfigOverwrite: {
                         // Customize the UI here if needed
