@@ -8,7 +8,7 @@ import { getToken } from "firebase/messaging";
 import { doc, setDoc } from "firebase/firestore";
 
 // You would replace this with your actual VAPID key from Firebase Project Settings -> Cloud Messaging
-const VAPID_KEY = "BKw5DLOk0t7uJZbZ_zLgK7z_W7Z9v8X8tW7q12x_LQQjZ8wO12_v7xZ-X7x_W7x_W7x_W7x_W7x_W7x_W7x";
+const VAPID_KEY = process.env.REACT_APP_VAPID_KEY || "BDEi31uK6uVlZxuj9WYWE1tC51fu32f1PHtzH6fA1TnHQoq3SZ2wl68aNBNjaNidzMIqL_9uVESzRjPePyGVyKk";
 
 export const requestPushPermission = async (userId) => {
     if (!("Notification" in window)) {
