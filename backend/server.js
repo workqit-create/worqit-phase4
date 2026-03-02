@@ -89,10 +89,9 @@ app.get('/api/auth/status', (req, res) => {
 
 // Create Video Call Link Endpoint (Using Jitsi for immediate, verification-free calls)
 app.post('/api/create-call', async (req, res) => {
-    // We no longer require Google OAuth to create a call
     try {
-        // Generate a random, unique Jitsi Meet room name
-        const roomName = `WorqitCall-${crypto.randomUUID().replace(/-/g, '').substring(0, 16)}`;
+        // Generate a random, unique Jitsi Meet room name (lowercase for Jitsi compatibility)
+        const roomName = `worqit-${crypto.randomUUID().replace(/-/g, '').substring(0, 24)}`;
         const meetLink = `https://meet.jit.si/${roomName}`;
 
         res.json({ meetLink });

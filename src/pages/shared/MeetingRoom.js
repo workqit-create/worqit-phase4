@@ -2,11 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { C } from './theme';
 import { Camera, Mic, Phone, PhoneOff } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 export default function MeetingRoom() {
     const { id } = useParams();
     const location = useLocation();
     const navigate = useNavigate();
+    const { userProfile } = useAuth();
+    const jitsiRef = React.useRef(null);
 
     const [meetingDetails, setMeetingDetails] = useState({
         meetLink: location.state?.meetLink || '',
@@ -14,33 +17,110 @@ export default function MeetingRoom() {
     });
 
     const [isJoining, setIsJoining] = useState(false);
+    const [hasJoined, setHasJoined] = useState(false);
 
     useEffect(() => {
-        // In a real app, if meetLink isn't in state (e.g., page refresh),
-        // you would fetch the details from the backend using the meeting `id`.
         if (!meetingDetails.meetLink) {
-            // Fallback for demo purposes if someone directly hits the URL
             console.warn("No meeting link found in state.");
         }
     }, [id, meetingDetails.meetLink]);
 
     const handleJoin = () => {
+        if (!meetingDetails.meetLink) return;
+        
         setIsJoining(true);
-
-        // Give a slight delay for better UX before popping open the new tab
+        setHasJoined(true);
+        
+        // Extract room name from meetLink
+        const roomName = meetingDetails.meetLink.split('/').pop();
+        
+        // Initialize Jitsi IFrame API
         setTimeout(() => {
-            if (meetingDetails.meetLink) {
+            if (window.JitsiMeetExternalAPI && jitsiRef.current) {
+                const domain = 'meet.jit.si';
+                const options = {
+                    roomName: roomName,
+                    width: '100%',
+                    height: '100%',
+                    parentNode: jitsiRef.current,
+                    configOverwrite: {
+                        startWithAudioMuted: false,
+                        startWithVideoMuted: false,
+                        prejoinPageEnabled: false,
+                        p2p: { enabled: false }, // Force JVB to avoid P2P negotiation issues
+                    },
+                    interfaceConfigOverwrite: {
+                        // Customize the UI here if needed
+                    },
+                    userInfo: {
+                        displayName: userProfile?.name || 'Worqit User'
+                    }
+                };
+                const api = new window.JitsiMeetExternalAPI(domain, options);
+                
+                // Add event listeners for cleanup
+                api.addEventListeners({
+                    readyToClose: () => {
+                        navigate(-1);
+                    },
+                    videoConferenceLeft: () => {
+                        navigate(-1);
+                    }
+                });
+            } else {
+                // Fallback to old behavior if API script failed to load
                 window.open(meetingDetails.meetLink, '_blank', 'noopener,noreferrer');
-                // Optionally redirect back to dashboard after joining
-                navigate('/hirer'); // or candidate, depending on user type. We'll simplify and just go back.
+                navigate('/hirer');
             }
             setIsJoining(false);
-        }, 800);
+        }, 500);
     };
 
     const handleLeave = () => {
         navigate(-1); // Go back to previous page
     };
+
+    if (hasJoined) {
+        return (
+            <div style={{
+                width: '100vw',
+                height: '100vh',
+                background: '#000',
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                zIndex: 1000,
+                display: 'flex',
+                flexDirection: 'column'
+            }}>
+                <div style={{
+                    padding: '12px 24px',
+                    background: C.ink,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    borderBottom: `1px solid ${C.line}`
+                }}>
+                    <div style={{ color: '#fff', fontWeight: 600 }}>Worqit Direct Call</div>
+                    <button
+                        onClick={handleLeave}
+                        style={{
+                            padding: '8px 16px',
+                            borderRadius: 8,
+                            background: '#ff3b30',
+                            border: 'none',
+                            color: '#fff',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                        }}
+                    >
+                        End Call
+                    </button>
+                </div>
+                <div ref={jitsiRef} style={{ flex: 1 }} />
+            </div>
+        );
+    }
 
     return (
         <div style={{
@@ -170,7 +250,7 @@ export default function MeetingRoom() {
                                 onMouseDown={(e) => !isJoining && (e.currentTarget.style.transform = 'scale(0.98)')}
                                 onMouseUp={(e) => !isJoining && (e.currentTarget.style.transform = 'scale(1)')}
                             >
-                                {isJoining ? 'Joining...' : 'Join Google Meet'}
+                                {isJoining ? 'Joining...' : 'Join Video Call'}
                                 <Phone size={18} />
                             </button>
 

@@ -85,7 +85,7 @@ export default function ChatWindow({ convId, currentUid, currentUser, otherUser,
 
     } catch (e) {
       console.error(e);
-      alert("Error starting call. Make sure you are authenticated with Google.");
+      alert("Error starting call. Please try again.");
     }
     setCalling(false);
   }
