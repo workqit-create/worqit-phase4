@@ -4,6 +4,7 @@ const passport = require('passport');
 const { google } = require('googleapis');
 const crypto = require('crypto');
 const cors = require('cors');
+const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || 'sk_test_fallback_key');
 require('dotenv').config();
@@ -90,9 +91,8 @@ app.get('/api/auth/status', (req, res) => {
 // Create Video Call Link Endpoint (Using Jitsi for immediate, verification-free calls)
 app.post('/api/create-call', async (req, res) => {
     try {
-        // Fix 1: Generate a clean, simple, letters-only room name with timestamp
-        // This avoids collisions with locked/members-only rooms on public Jitsi servers
-        const roomName = `worqit${Date.now()}${Math.random().toString(36).substring(2, 7)}`.toLowerCase();
+        // Fix: Use uuid to prevent members-only errors
+        const roomName = 'worqit-' + uuidv4();
         const meetLink = `https://meet.jit.si/${roomName}`;
 
         res.json({ meetLink });

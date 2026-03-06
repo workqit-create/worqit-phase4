@@ -91,16 +91,16 @@ export default function MeetingRoom() {
             alert("Jitsi SDK is still loading. Please wait a moment.");
             return;
         }
-        
+
         setIsJoining(true);
         setHasJoined(true);
-        
+
         // Fix 1: Ensure roomName is sanitized (extracted from meetLink which is already sanitized in backend)
         const roomName = meetingDetails.meetLink.split('/').pop();
-        
+
         // Fix 2: Exact domain
         const domain = 'meet.jit.si';
-        
+
         // Fix 3 & 4: Critical Config Options
         setTimeout(() => {
             if (window.JitsiMeetExternalAPI && jitsiRef.current) {
@@ -140,6 +140,8 @@ export default function MeetingRoom() {
                             startAsMuted: 0,
                             startSilent: false,
                             enableLobby: false,
+                            startAsGuest: true,
+                            disableLobbyPassword: true,
                         },
                         interfaceConfigOverwrite: {
                             SHOW_JITSI_WATERMARK: false,
@@ -153,7 +155,7 @@ export default function MeetingRoom() {
                         }
                     };
                     apiRef.current = new window.JitsiMeetExternalAPI(domain, options);
-                    
+
                     apiRef.current.addEventListeners({
                         readyToClose: () => navigate(-1),
                         videoConferenceLeft: () => navigate(-1)

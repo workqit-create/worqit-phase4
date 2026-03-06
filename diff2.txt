@@ -1,0 +1,136 @@
+commit 5d2cf5d28b3ff900abd99ae7cab5c2e3a8ae1a1e
+Author: workqit-create <workqit@gmail.com>
+Date:   Fri Mar 6 10:16:59 2026 +0400
+
+    commit
+
+diff --git a/src/App.js b/src/App.js
+index 674142d..aa1b937 100644
+--- a/src/App.js
++++ b/src/App.js
+@@ -41,6 +41,13 @@ function ProtectedRoute({ children, allowedType }) {
+   return children;
+ }
+ 
++// ── Meeting route — only requires login, no userType check ──
++function MeetingRoute({ children }) {
++  const { currentUser } = useAuth();
++  if (!currentUser) return <Navigate to="/login" replace />;
++  return children;
++}
++
+ // ── Stops logged-in users seeing login/signup ───────────
+ function PublicRoute({ children }) {
+   const { currentUser, userProfile } = useAuth();
+@@ -72,7 +79,7 @@ function AppRoutes() {
+ 
+       {/* Shared Route for Call Testing */}
+       <Route path="/meeting/:id" element={
+-        <ProtectedRoute><MeetingRoom /></ProtectedRoute>
++        <MeetingRoute><MeetingRoom /></MeetingRoute>
+       } />
+ 
+       <Route path="*" element={<Navigate to="/" replace />} />
+diff --git a/src/pages/shared/ChatWindow.js b/src/pages/shared/ChatWindow.js
+index a5e5f8b..5c93bee 100644
+--- a/src/pages/shared/ChatWindow.js
++++ b/src/pages/shared/ChatWindow.js
+@@ -10,10 +10,13 @@ import { sendMessage, listenToMessages, markConversationRead } from "../../servi
+ import { createDocumentRequest } from "../../services/documentService";
+ 
+ import callService from "../../services/callService";
++import { useAuth } from "../../context/AuthContext";
++import { getAuth } from "firebase/auth";
+ 
+ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+ 
+ export default function ChatWindow({ convId, currentUid, currentUser, otherUser, onBack }) {
++  const { userProfile } = useAuth();
+   const navigate = useNavigate();
+   const [messages, setMessages] = useState([]);
+   const [text, setText] = useState("");
+@@ -54,20 +57,30 @@ export default function ChatWindow({ convId, currentUid, currentUser, otherUser,
+     if (calling || !otherUser?.uid) return;
+     setCalling(true);
+     try {
+-      // Note: we fetch the real backend URL from your environment or fallback to localhost
++      // Get Firebase ID token — works for ALL sign-in methods (Google, email/password, etc.)
++      const auth = getAuth();
++      const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : null;
++
+       const res = await fetch(`${BACKEND_URL}/api/create-call`, {
+         method: 'POST',
+-        credentials: 'include'
++        credentials: 'include',
++        headers: {
++          'Content-Type': 'application/json',
++          ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {})
++        }
+       });
+ 
+       if (!res.ok) throw new Error("Failed to create call");
+ 
+       const data = await res.json();
+ 
++      // Use userProfile.name (works for email/password users), fallback chain
++      const callerName = userProfile?.name || currentUser?.displayName || currentUser?.email || "User";
++
+       const callId = callService.initiateCall(
+         otherUser.uid,
+         currentUid,
+-        currentUser?.name || "User",
++        callerName,
+         data.meetLink
+       );
+ 
+diff --git a/src/pages/shared/MeetingRoom.js b/src/pages/shared/MeetingRoom.js
+index 719b30b..fae4ecb 100644
+--- a/src/pages/shared/MeetingRoom.js
++++ b/src/pages/shared/MeetingRoom.js
+@@ -20,6 +20,7 @@ export default function MeetingRoom() {
+     const [isJoining, setIsJoining] = useState(false);
+     const [hasJoined, setHasJoined] = useState(false);
+     const [scriptLoaded, setScriptLoaded] = useState(false);
++    const [stateError, setStateError] = useState(!location.state?.meetLink);
+ 
+     // Fix 5: Load Jitsi Script via useEffect for better control
+     useEffect(() => {
+@@ -48,9 +49,38 @@ export default function MeetingRoom() {
+     useEffect(() => {
+         if (!meetingDetails.meetLink) {
+             console.warn("No meeting link found in state.");
++            setStateError(true);
+         }
+     }, [id, meetingDetails.meetLink]);
+ 
++    // Show friendly error if page was refreshed or link is missing
++    if (stateError && !meetingDetails.meetLink) {
++        return (
++            <div style={{
++                minHeight: '100vh', background: '#060C1A',
++                display: 'flex', flexDirection: 'column',
++                alignItems: 'center', justifyContent: 'center',
++                fontFamily: C.font, padding: 20, textAlign: 'center'
++            }}>
++                <div style={{ fontSize: 48, marginBottom: 16 }}>📞</div>
++                <h2 style={{ color: '#fff', marginBottom: 8 }}>Meeting link not found</h2>
++                <p style={{ color: C.silver, marginBottom: 24, maxWidth: 360 }}>
++                    This can happen if you refreshed the page. Please start or accept the call again from your messages.
++                </p>
++                <button
++                    onClick={() => navigate(-1)}
++                    style={{
++                        padding: '12px 28px', borderRadius: 30,
++                        background: C.grad, border: 'none',
++                        color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 15
++                    }}
++                >
++                    Go Back
++                </button>
++            </div>
++        );
++    }
++
+     const handleJoin = () => {
+         if (!meetingDetails.meetLink) {
+             alert("No meeting link found. Please try starting the call again.");
