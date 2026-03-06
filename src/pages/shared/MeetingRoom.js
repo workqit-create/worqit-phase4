@@ -1,60 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { C } from './theme';
-import { Camera, Mic, Phone, PhoneOff } from 'lucide-react';
+import { Phone, PhoneOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function MeetingRoom() {
     const { id } = useParams();
     const location = useLocation();
     const navigate = useNavigate();
-    const { userProfile, currentUser } = useAuth();
-    const jitsiRef = React.useRef(null);
-    const apiRef = React.useRef(null);
+    const { userProfile } = useAuth();
 
-    const [meetingDetails, setMeetingDetails] = useState({
-        meetLink: location.state?.meetLink || '',
-        otherUserName: location.state?.otherUserName || 'Unknown User'
-    });
+    const meetLink = location.state?.meetLink || '';
+    const otherUserName = location.state?.otherUserName || 'Unknown User';
 
-    const [isJoining, setIsJoining] = useState(false);
-    const [hasJoined, setHasJoined] = useState(false);
-    const [scriptLoaded, setScriptLoaded] = useState(false);
-    const [stateError, setStateError] = useState(!location.state?.meetLink);
+    const [joined, setJoined] = useState(false);
 
-    // Fix 5: Load Jitsi Script via useEffect for better control
-    useEffect(() => {
-        const scriptId = 'jitsi-external-api';
-        if (document.getElementById(scriptId)) {
-            setScriptLoaded(true);
-            return;
-        }
-
-        const script = document.createElement('script');
-        script.id = scriptId;
-        script.src = 'https://meet.jit.si/external_api.js';
-        script.async = true;
-        script.onload = () => setScriptLoaded(true);
-        document.body.appendChild(script);
-
-        return () => {
-            // Fix 6: Cleanup on unmount
-            if (apiRef.current) {
-                apiRef.current.dispose();
-                apiRef.current = null;
-            }
-        };
-    }, []);
-
-    useEffect(() => {
-        if (!meetingDetails.meetLink) {
-            console.warn("No meeting link found in state.");
-            setStateError(true);
-        }
-    }, [id, meetingDetails.meetLink]);
-
-    // Show friendly error if page was refreshed or link is missing
-    if (stateError && !meetingDetails.meetLink) {
+    if (!meetLink) {
         return (
             <div style={{
                 minHeight: '100vh', background: '#060C1A',
@@ -67,14 +28,11 @@ export default function MeetingRoom() {
                 <p style={{ color: C.silver, marginBottom: 24, maxWidth: 360 }}>
                     This can happen if you refreshed the page. Please start or accept the call again from your messages.
                 </p>
-                <button
-                    onClick={() => navigate(-1)}
-                    style={{
-                        padding: '12px 28px', borderRadius: 30,
-                        background: C.grad, border: 'none',
-                        color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 15
-                    }}
-                >
+                <button onClick={() => navigate(-1)} style={{
+                    padding: '12px 28px', borderRadius: 30,
+                    background: C.grad, border: 'none',
+                    color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 15
+                }}>
                     Go Back
                 </button>
             </div>
@@ -82,323 +40,101 @@ export default function MeetingRoom() {
     }
 
     const handleJoin = () => {
-        if (!meetingDetails.meetLink) {
-            alert("No meeting link found. Please try starting the call again.");
-            return;
-        }
-
-        if (!scriptLoaded) {
-            alert("Jitsi SDK is still loading. Please wait a moment.");
-            return;
-        }
-
-        setIsJoining(true);
-        setHasJoined(true);
-
-        // Fix 1: Ensure roomName is sanitized (extracted from meetLink which is already sanitized in backend)
-        const roomName = meetingDetails.meetLink.split('/').pop();
-
-        // Fix 2: Exact domain
-        const domain = '8x8.vc';
-
-        // Fix 3 & 4: Critical Config Options
-        setTimeout(() => {
-            if (window.JitsiMeetExternalAPI && jitsiRef.current) {
-                try {
-                    const options = {
-                        roomName: roomName,
-                        width: '100%',
-                        height: '100%',
-                        parentNode: jitsiRef.current,
-                        configOverwrite: {
-                            startWithAudioMuted: false,
-                            startWithVideoMuted: false,
-                            enableWelcomePage: false,
-                            prejoinPageEnabled: false,
-                            disableDeepLinking: true,
-                            enableLobby: false,
-                            membersOnly: false,
-                            requireDisplayName: false,
-                            enableInsecureRoomNameWarning: false,
-                            disableModeratorIndicator: true,
-                            startSilent: false,
-                            enableUserRolesBasedOnToken: false,
-                            tokenAuthUrl: undefined,
-                            hosts: {
-                                domain: 'meet.jit.si',
-                                muc: 'conference.meet.jit.si',
-                                focus: 'focus.meet.jit.si'
-                            },
-                            lobby: { autoKnock: false, enableChat: false },
-                            p2p: {
-                                enabled: true,
-                                stunServers: [
-                                    { urls: 'stun:meet-jit-si-turnrelay.jitsi.net:443' },
-                                    { urls: 'stun:stun.l.google.com:19302' },
-                                ]
-                            },
-                            iceTransportPolicy: 'all',
-                        },
-                        interfaceConfigOverwrite: {
-                            SHOW_JITSI_WATERMARK: false,
-                            SHOW_WATERMARK_FOR_GUESTS: false,
-                            DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
-                            HIDE_INVITE_MORE_HEADER: true,
-                            DISABLE_PRESENCE_STATUS: true,
-                        },
-                        userInfo: {
-                            displayName: userProfile?.name || currentUser?.displayName || currentUser?.email || 'Worqit User',
-                            email: currentUser?.email || ''
-                        }
-                    };
-                    apiRef.current = new window.JitsiMeetExternalAPI(domain, options);
-
-                    apiRef.current.addEventListeners({
-                        readyToClose: () => navigate(-1),
-                        videoConferenceLeft: () => navigate(-1)
-                    });
-                } catch (err) {
-                    console.error("Jitsi IFrame Error:", err);
-                    setHasJoined(false);
-                    alert("Failed to load video call. Opening in new tab instead.");
-                    window.open(meetingDetails.meetLink, '_blank');
-                }
-            } else {
-                console.warn("Jitsi API not found. Falling back to new tab.");
-                window.open(meetingDetails.meetLink, '_blank');
-                navigate(-1);
-            }
-            setIsJoining(false);
-        }, 500);
+        setJoined(true);
+        window.open(meetLink, '_blank');
     };
 
     const handleLeave = () => {
-        navigate(-1); // Go back to previous page
+        navigate(-1);
     };
-
-    if (hasJoined) {
-        return (
-            <div style={{
-                width: '100vw',
-                height: '100vh',
-                background: '#000',
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                zIndex: 1000,
-                display: 'flex',
-                flexDirection: 'column'
-            }}>
-                <div style={{
-                    padding: '12px 24px',
-                    background: C.ink,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    borderBottom: `1px solid ${C.line}`
-                }}>
-                    <div style={{ color: '#fff', fontWeight: 600 }}>Worqit Direct Call</div>
-                    <button
-                        onClick={handleLeave}
-                        style={{
-                            padding: '8px 16px',
-                            borderRadius: 8,
-                            background: '#ff3b30',
-                            border: 'none',
-                            color: '#fff',
-                            fontWeight: 600,
-                            cursor: 'pointer'
-                        }}
-                    >
-                        End Call
-                    </button>
-                </div>
-                <div ref={jitsiRef} style={{ flex: 1 }} />
-            </div>
-        );
-    }
 
     return (
         <div style={{
-            minHeight: '100vh',
-            background: C.bg,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 20,
-            fontFamily: C.font,
+            minHeight: '100vh', background: C.bg,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            padding: 20, fontFamily: C.font,
         }}>
             <div style={{
-                width: '100%',
-                maxWidth: 800,
-                background: C.ink,
-                borderRadius: 24,
+                width: '100%', maxWidth: 480,
+                background: C.ink, borderRadius: 24,
                 border: `1px solid ${C.line}`,
                 overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
                 boxShadow: '0 24px 48px rgba(0,0,0,0.4)',
             }}>
-
                 {/* Header */}
                 <div style={{
                     padding: '24px 32px',
                     borderBottom: `1px solid ${C.line}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    background: C.ink2
+                    background: C.ink2,
+                    textAlign: 'center'
                 }}>
                     <h2 style={{ margin: 0, color: '#fff', fontSize: 20, fontWeight: 600 }}>
-                        Ready to join?
+                        Direct Call
                     </h2>
-                    <div style={{ color: C.silver, fontSize: 14 }}>
-                        Meeting ID: {id}
-                    </div>
+                    <p style={{ margin: '6px 0 0', color: C.silver, fontSize: 14 }}>
+                        with <strong style={{ color: '#fff' }}>{otherUserName}</strong>
+                    </p>
                 </div>
 
-                {/* Content Area */}
-                <div style={{
-                    display: 'flex',
-                    padding: 40,
-                    gap: 40,
-                    flexDirection: window.innerWidth < 768 ? 'column' : 'row'
-                }}>
+                {/* Body */}
+                <div style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-                    {/* Preview Box (Fake local video) */}
+                    {/* Avatar */}
                     <div style={{
-                        flex: 2,
-                        background: '#000',
-                        borderRadius: 16,
-                        aspectRatio: '16/9',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        position: 'relative',
-                        overflow: 'hidden'
+                        width: 80, height: 80, borderRadius: '50%',
+                        background: C.grad, margin: '0 auto',
+                        display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', fontSize: 32, color: '#fff', fontWeight: 700
                     }}>
-                        <div style={{
-                            width: 100,
-                            height: 100,
-                            borderRadius: '50%',
-                            background: C.ink3,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 40,
-                            color: C.silver
-                        }}>
-                            👤
-                        </div>
-
-                        {/* Fake controls inside preview */}
-                        <div style={{
-                            position: 'absolute',
-                            bottom: 20,
-                            display: 'flex',
-                            gap: 16
-                        }}>
-                            <button style={previewBtnStyle}><Mic size={20} color="#fff" /></button>
-                            <button style={previewBtnStyle}><Camera size={20} color="#fff" /></button>
-                        </div>
+                        {otherUserName.charAt(0).toUpperCase()}
                     </div>
 
-                    {/* Info & Join Panel */}
-                    <div style={{
-                        flex: 1,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        gap: 24
-                    }}>
-                        <div style={{ textAlign: 'center' }}>
-                            <h3 style={{ margin: '0 0 8px 0', color: '#fff', fontSize: 24 }}>
-                                Direct Call
-                            </h3>
-                            <p style={{ margin: 0, color: C.silver, fontSize: 16 }}>
-                                with <strong style={{ color: '#fff' }}>{meetingDetails.otherUserName}</strong>
-                            </p>
+                    {joined && (
+                        <div style={{
+                            background: 'rgba(52,199,89,0.1)',
+                            border: '1px solid rgba(52,199,89,0.3)',
+                            borderRadius: 12, padding: '12px 16px',
+                            color: '#34c759', fontSize: 14, textAlign: 'center'
+                        }}>
+                            ✅ Call opened in a new tab. Come back here when done.
                         </div>
+                    )}
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            <button
-                                onClick={handleJoin}
-                                disabled={isJoining || !meetingDetails.meetLink}
-                                style={{
-                                    padding: '16px 24px',
-                                    borderRadius: 30,
-                                    background: C.grad,
-                                    border: 'none',
-                                    color: '#fff',
-                                    fontSize: 16,
-                                    fontWeight: 700,
-                                    cursor: (isJoining || !meetingDetails.meetLink) ? 'not-allowed' : 'pointer',
-                                    opacity: (isJoining || !meetingDetails.meetLink) ? 0.7 : 1,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: 10,
-                                    boxShadow: '0 8px 24px rgba(26,111,232,0.4)',
-                                    transition: 'transform 0.1s'
-                                }}
-                                onMouseDown={(e) => !isJoining && (e.currentTarget.style.transform = 'scale(0.98)')}
-                                onMouseUp={(e) => !isJoining && (e.currentTarget.style.transform = 'scale(1)')}
-                            >
-                                {isJoining ? 'Joining...' : 'Join Video Call'}
-                                <Phone size={18} />
-                            </button>
+                    <button
+                        onClick={handleJoin}
+                        style={{
+                            padding: '16px 24px', borderRadius: 30,
+                            background: C.grad, border: 'none',
+                            color: '#fff', fontSize: 16, fontWeight: 700,
+                            cursor: 'pointer', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center',
+                            gap: 10, boxShadow: '0 8px 24px rgba(26,111,232,0.4)',
+                        }}
+                    >
+                        {joined ? 'Rejoin Call' : 'Join Video Call'}
+                        <Phone size={18} />
+                    </button>
 
-                            <button
-                                onClick={handleLeave}
-                                style={{
-                                    padding: '16px 24px',
-                                    borderRadius: 30,
-                                    background: 'transparent',
-                                    border: `1px solid ${C.line}`,
-                                    color: C.silver,
-                                    fontSize: 16,
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: 10,
-                                    transition: 'all 0.2s'
-                                }}
-                                onMouseOver={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255,59,48,0.1)';
-                                    e.currentTarget.style.color = '#ff3b30';
-                                    e.currentTarget.style.borderColor = '#ff3b30';
-                                }}
-                                onMouseOut={(e) => {
-                                    e.currentTarget.style.background = 'transparent';
-                                    e.currentTarget.style.color = C.silver;
-                                    e.currentTarget.style.borderColor = C.line;
-                                }}
-                            >
-                                Cancel
-                                <PhoneOff size={18} />
-                            </button>
-                        </div>
-                    </div>
+                    <button
+                        onClick={handleLeave}
+                        style={{
+                            padding: '16px 24px', borderRadius: 30,
+                            background: 'transparent',
+                            border: `1px solid ${C.line}`,
+                            color: C.silver, fontSize: 16, fontWeight: 600,
+                            cursor: 'pointer', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', gap: 10,
+                        }}
+                    >
+                        Back to Messages <PhoneOff size={18} />
+                    </button>
 
+                    <p style={{ color: C.silver, fontSize: 12, textAlign: 'center', margin: 0 }}>
+                        The call will open in a new browser tab via Jitsi Meet
+                    </p>
                 </div>
             </div>
         </div>
     );
 }
-
-const previewBtnStyle = {
-    width: 48,
-    height: 48,
-    borderRadius: '50%',
-    background: 'rgba(255,255,255,0.1)',
-    border: '1px solid rgba(255,255,255,0.2)',
-    backdropFilter: 'blur(10px)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer'
-};
