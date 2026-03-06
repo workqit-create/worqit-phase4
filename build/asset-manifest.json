@@ -1,11 +1,11 @@
 {
   "files": {
-    "main.js": "/static/js/main.20273774.js",
+    "main.js": "/static/js/main.5f85ca3a.js",
     "static/media/worqit-logo.png": "/static/media/worqit-logo.0d5c97e9143f7b9b4e02.png",
     "index.html": "/index.html",
-    "main.20273774.js.map": "/static/js/main.20273774.js.map"
+    "main.5f85ca3a.js.map": "/static/js/main.5f85ca3a.js.map"
   },
   "entrypoints": [
-    "static/js/main.20273774.js"
+    "static/js/main.5f85ca3a.js"
   ]
 }
