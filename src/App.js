@@ -1,6 +1,7 @@
 // src/App.js
 // ═══════════════════════════════════════════════════════
 //  WORQIT — Phase 4
+//  Redeploy to apply environment variables
 //  Fixes: /hirer/dashboard → /hirer routing bug
 //  Adds:  /admin route for admin panel
 // ═══════════════════════════════════════════════════════
