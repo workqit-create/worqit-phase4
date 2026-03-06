@@ -10,10 +10,13 @@ import { sendMessage, listenToMessages, markConversationRead } from "../../servi
 import { createDocumentRequest } from "../../services/documentService";
 
 import callService from "../../services/callService";
+import { useAuth } from "../../context/AuthContext";
+import { getAuth } from "firebase/auth";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 export default function ChatWindow({ convId, currentUid, currentUser, otherUser, onBack }) {
+  const { userProfile } = useAuth();
   const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -54,20 +57,30 @@ export default function ChatWindow({ convId, currentUid, currentUser, otherUser,
     if (calling || !otherUser?.uid) return;
     setCalling(true);
     try {
-      // Note: we fetch the real backend URL from your environment or fallback to localhost
+      // Get Firebase ID token — works for ALL sign-in methods (Google, email/password, etc.)
+      const auth = getAuth();
+      const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+
       const res = await fetch(`${BACKEND_URL}/api/create-call`, {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {})
+        }
       });
 
       if (!res.ok) throw new Error("Failed to create call");
 
       const data = await res.json();
 
+      // Use userProfile.name (works for email/password users), fallback chain
+      const callerName = userProfile?.name || currentUser?.displayName || currentUser?.email || "User";
+
       const callId = callService.initiateCall(
         otherUser.uid,
         currentUid,
-        currentUser?.name || "User",
+        callerName,
         data.meetLink
       );
 

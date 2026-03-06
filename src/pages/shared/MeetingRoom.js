@@ -20,6 +20,7 @@ export default function MeetingRoom() {
     const [isJoining, setIsJoining] = useState(false);
     const [hasJoined, setHasJoined] = useState(false);
     const [scriptLoaded, setScriptLoaded] = useState(false);
+    const [stateError, setStateError] = useState(!location.state?.meetLink);
 
     // Fix 5: Load Jitsi Script via useEffect for better control
     useEffect(() => {
@@ -48,8 +49,37 @@ export default function MeetingRoom() {
     useEffect(() => {
         if (!meetingDetails.meetLink) {
             console.warn("No meeting link found in state.");
+            setStateError(true);
         }
     }, [id, meetingDetails.meetLink]);
+
+    // Show friendly error if page was refreshed or link is missing
+    if (stateError && !meetingDetails.meetLink) {
+        return (
+            <div style={{
+                minHeight: '100vh', background: '#060C1A',
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                fontFamily: C.font, padding: 20, textAlign: 'center'
+            }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>📞</div>
+                <h2 style={{ color: '#fff', marginBottom: 8 }}>Meeting link not found</h2>
+                <p style={{ color: C.silver, marginBottom: 24, maxWidth: 360 }}>
+                    This can happen if you refreshed the page. Please start or accept the call again from your messages.
+                </p>
+                <button
+                    onClick={() => navigate(-1)}
+                    style={{
+                        padding: '12px 28px', borderRadius: 30,
+                        background: C.grad, border: 'none',
+                        color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 15
+                    }}
+                >
+                    Go Back
+                </button>
+            </div>
+        );
+    }
 
     const handleJoin = () => {
         if (!meetingDetails.meetLink) {

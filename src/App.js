@@ -41,6 +41,13 @@ function ProtectedRoute({ children, allowedType }) {
   return children;
 }
 
+// ── Meeting route — only requires login, no userType check ──
+function MeetingRoute({ children }) {
+  const { currentUser } = useAuth();
+  if (!currentUser) return <Navigate to="/login" replace />;
+  return children;
+}
+
 // ── Stops logged-in users seeing login/signup ───────────
 function PublicRoute({ children }) {
   const { currentUser, userProfile } = useAuth();
@@ -72,7 +79,7 @@ function AppRoutes() {
 
       {/* Shared Route for Call Testing */}
       <Route path="/meeting/:id" element={
-        <ProtectedRoute><MeetingRoom /></ProtectedRoute>
+        <MeetingRoute><MeetingRoom /></MeetingRoute>
       } />
 
       <Route path="*" element={<Navigate to="/" replace />} />
