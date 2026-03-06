@@ -84,10 +84,10 @@ export default function MeetingRoom() {
                             startWithAudioMuted: false,
                             startWithVideoMuted: false,
                             enableWelcomePage: false,
-                            prejoinPageEnabled: false,        // Fix 4: Removes lobby waiting loop
+                            prejoinPageEnabled: false,
                             disableDeepLinking: true,
                             p2p: {
-                                enabled: true,                  // enables direct peer-to-peer
+                                enabled: true,
                                 stunServers: [
                                     { urls: 'stun:meet-jit-si-turnrelay.jitsi.net:443' },
                                     { urls: 'stun:stun.l.google.com:19302' },
@@ -95,6 +95,20 @@ export default function MeetingRoom() {
                                 ]
                             },
                             iceTransportPolicy: 'all',
+                            // Fix 2 & 3: Disable lobby/members-only and moderator requirements
+                            lobby: {
+                                autoKnock: false,
+                                enableChat: false,
+                            },
+                            conferences: {
+                                enableLobbyChat: false,
+                            },
+                            membersOnly: false,
+                            requireDisplayName: false,
+                            enableInsecureRoomNameWarning: false,
+                            disableModeratorIndicator: true,
+                            startAsMuted: 0,
+                            startSilent: false,
                             enableLobby: false,
                         },
                         interfaceConfigOverwrite: {
