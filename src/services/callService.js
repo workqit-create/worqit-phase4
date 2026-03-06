@@ -79,6 +79,28 @@ class CallService {
     off(event) {
         delete this.listeners[event];
     }
+
+    sendSignal(targetUserId, fromUserId, signal) {
+        if (this.socket) {
+            this.socket.emit('webrtc-signal', {
+                targetUserId,
+                fromUserId,
+                signal
+            });
+        }
+    }
+
+    listenForSignals(callback) {
+        if (this.socket) {
+            this.socket.on('webrtc-signal', callback);
+        }
+    }
+
+    stopListeningForSignals(callback) {
+        if (this.socket) {
+            this.socket.off('webrtc-signal', callback);
+        }
+    }
 }
 
 const callServiceInstance = new CallService();

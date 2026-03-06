@@ -57,43 +57,23 @@ export default function ChatWindow({ convId, currentUid, currentUser, otherUser,
     if (calling || !otherUser?.uid) return;
     setCalling(true);
     try {
-      const auth = getAuth();
-      const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-
-      const res = await fetch(`${BACKEND_URL}/api/create-call`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {})
-        }
-      });
-
-      if (!res.ok) throw new Error("Failed to create call");
-
-      const data = await res.json();
-
-      const callerName = userProfile?.name || currentUser?.displayName || currentUser?.email || "User";
-
-      // Generate callId locally — do NOT wait for socket to respond
-      const callId = 'call-' + Date.now();
-
-      // Notify other user via socket (best effort, don't block on it)
-      callService.initiateCall(
+      // Notify other user via socket mapping over their CallService
+      const callId = callService.initiateCall(
         otherUser.uid,
         currentUid,
-        callerName,
-        data.meetLink
+        userProfile?.name || currentUser?.displayName || currentUser?.email || "User",
+        "webrtc-call"
       );
 
-      // Send meet link in chat so recipient can also join manually
-      await sendMessage(convId, currentUid, `📞 Direct Call started! Join here: ${data.meetLink}`);
+      // Send system message so they can click it to answer
+      await sendMessage(convId, currentUid, `📞 Direct Call started! Check your popup or click here to join.`);
 
-      // Navigate immediately — don't wait for socket confirmation
+      // Navigate immediately as Caller
       navigate(`/meeting/${callId}`, {
         state: {
-          meetLink: data.meetLink,
-          otherUserName: otherUser.name || "User"
+          targetUserId: otherUser.uid,
+          otherUserName: otherUser.name || "User",
+          isCaller: true
         }
       });
 

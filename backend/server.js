@@ -91,9 +91,9 @@ app.get('/api/auth/status', (req, res) => {
 // Create Video Call Link Endpoint (Using Jitsi for immediate, verification-free calls)
 app.post('/api/create-call', async (req, res) => {
     try {
-        // Fix: Use uuid to prevent members-only errors
+        // Fix: Use open Jitsi instance to prevent members-only errors that meet.jit.si enforces
         const roomName = 'worqit-' + uuidv4();
-        const meetLink = `https://meet.jit.si/${roomName}`;
+        const meetLink = `https://meet.ffmuc.net/${roomName}`;
 
         res.json({ meetLink });
     } catch (error) {
@@ -212,6 +212,17 @@ io.on('connection', (socket) => {
                 targetUserId: data.targetUserId,
                 status: data.status, // "accepted" or "declined"
                 callId: data.callId
+            });
+        }
+    });
+
+    // ── NATIVE WEBRTC SIGNALING (Simple-Peer) ──
+    socket.on('webrtc-signal', (data) => {
+        const targetSocketId = connectedUsers.get(data.targetUserId);
+        if (targetSocketId) {
+            io.to(targetSocketId).emit('webrtc-signal', {
+                fromUserId: data.fromUserId,
+                signal: data.signal
             });
         }
     });
