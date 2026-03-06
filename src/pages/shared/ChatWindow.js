@@ -57,7 +57,6 @@ export default function ChatWindow({ convId, currentUid, currentUser, otherUser,
     if (calling || !otherUser?.uid) return;
     setCalling(true);
     try {
-      // Get Firebase ID token — works for ALL sign-in methods (Google, email/password, etc.)
       const auth = getAuth();
       const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : null;
 
@@ -74,27 +73,29 @@ export default function ChatWindow({ convId, currentUid, currentUser, otherUser,
 
       const data = await res.json();
 
-      // Use userProfile.name (works for email/password users), fallback chain
       const callerName = userProfile?.name || currentUser?.displayName || currentUser?.email || "User";
 
-      const callId = callService.initiateCall(
+      // Generate callId locally — do NOT wait for socket to respond
+      const callId = 'call-' + Date.now();
+
+      // Notify other user via socket (best effort, don't block on it)
+      callService.initiateCall(
         otherUser.uid,
         currentUid,
         callerName,
         data.meetLink
       );
 
-      // Optionally format a system message here that a call started
-      await sendMessage(convId, currentUid, `📞 Scheduled a Direct Call. Check your popup or notifications! Meet Link: ${data.meetLink}`);
+      // Send meet link in chat so recipient can also join manually
+      await sendMessage(convId, currentUid, `📞 Direct Call started! Join here: ${data.meetLink}`);
 
-      if (callId) {
-        navigate(`/meeting/${callId}`, {
-          state: {
-            meetLink: data.meetLink,
-            otherUserName: otherUser.name || "User"
-          }
-        });
-      }
+      // Navigate immediately — don't wait for socket confirmation
+      navigate(`/meeting/${callId}`, {
+        state: {
+          meetLink: data.meetLink,
+          otherUserName: otherUser.name || "User"
+        }
+      });
 
     } catch (e) {
       console.error(e);

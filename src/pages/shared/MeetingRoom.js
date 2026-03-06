@@ -99,7 +99,7 @@ export default function MeetingRoom() {
         const roomName = meetingDetails.meetLink.split('/').pop();
 
         // Fix 2: Exact domain
-        const domain = 'meet.jit.si';
+        const domain = '8x8.vc';
 
         // Fix 3 & 4: Critical Config Options
         setTimeout(() => {
@@ -116,38 +116,35 @@ export default function MeetingRoom() {
                             enableWelcomePage: false,
                             prejoinPageEnabled: false,
                             disableDeepLinking: true,
+                            enableLobby: false,
+                            membersOnly: false,
+                            requireDisplayName: false,
+                            enableInsecureRoomNameWarning: false,
+                            disableModeratorIndicator: true,
+                            startSilent: false,
+                            enableUserRolesBasedOnToken: false,
+                            tokenAuthUrl: undefined,
+                            hosts: {
+                                domain: 'meet.jit.si',
+                                muc: 'conference.meet.jit.si',
+                                focus: 'focus.meet.jit.si'
+                            },
+                            lobby: { autoKnock: false, enableChat: false },
                             p2p: {
                                 enabled: true,
                                 stunServers: [
                                     { urls: 'stun:meet-jit-si-turnrelay.jitsi.net:443' },
                                     { urls: 'stun:stun.l.google.com:19302' },
-                                    { urls: 'stun:stun1.l.google.com:19302' },
                                 ]
                             },
                             iceTransportPolicy: 'all',
-                            // Fix 2 & 3: Disable lobby/members-only and moderator requirements
-                            lobby: {
-                                autoKnock: false,
-                                enableChat: false,
-                            },
-                            conferences: {
-                                enableLobbyChat: false,
-                            },
-                            membersOnly: false,
-                            requireDisplayName: false,
-                            enableInsecureRoomNameWarning: false,
-                            disableModeratorIndicator: true,
-                            startAsMuted: 0,
-                            startSilent: false,
-                            enableLobby: false,
-                            startAsGuest: true,
-                            disableLobbyPassword: true,
                         },
                         interfaceConfigOverwrite: {
                             SHOW_JITSI_WATERMARK: false,
                             SHOW_WATERMARK_FOR_GUESTS: false,
                             DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
-                            // Customize the UI here if needed
+                            HIDE_INVITE_MORE_HEADER: true,
+                            DISABLE_PRESENCE_STATUS: true,
                         },
                         userInfo: {
                             displayName: userProfile?.name || currentUser?.displayName || currentUser?.email || 'Worqit User',
