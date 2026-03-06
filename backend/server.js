@@ -93,7 +93,7 @@ app.post('/api/create-call', async (req, res) => {
     try {
         // Fix: Use uuid to prevent members-only errors
         const roomName = 'worqit-' + uuidv4();
-        const meetLink = `https://8x8.vc/${roomName}`;
+        const meetLink = `https://meet.jit.si/${roomName}`;
 
         res.json({ meetLink });
     } catch (error) {
