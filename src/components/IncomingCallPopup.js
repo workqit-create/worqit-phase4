@@ -38,11 +38,12 @@ export default function IncomingCallPopup({ currentUser }) {
             'accepted',
             incomingCall.callId
         );
-        // Redirect to intermediate meeting room
+        // Redirect to meeting room as the RECEIVER (isCaller: false)
         navigate(`/meeting/${incomingCall.callId}`, {
             state: {
-                meetLink: incomingCall.meetLink,
-                otherUserName: incomingCall.fromUserName
+                targetUserId: incomingCall.fromUserId,
+                otherUserName: incomingCall.fromUserName,
+                isCaller: false
             }
         });
         setIncomingCall(null);
