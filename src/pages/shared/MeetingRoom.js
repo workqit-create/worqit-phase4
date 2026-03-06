@@ -8,8 +8,9 @@ export default function MeetingRoom() {
     const { id } = useParams();
     const location = useLocation();
     const navigate = useNavigate();
-    const { userProfile } = useAuth();
+    const { userProfile, currentUser } = useAuth();
     const jitsiRef = React.useRef(null);
+    const apiRef = React.useRef(null);
 
     const [meetingDetails, setMeetingDetails] = useState({
         meetLink: location.state?.meetLink || '',
@@ -18,6 +19,31 @@ export default function MeetingRoom() {
 
     const [isJoining, setIsJoining] = useState(false);
     const [hasJoined, setHasJoined] = useState(false);
+    const [scriptLoaded, setScriptLoaded] = useState(false);
+
+    // Fix 5: Load Jitsi Script via useEffect for better control
+    useEffect(() => {
+        const scriptId = 'jitsi-external-api';
+        if (document.getElementById(scriptId)) {
+            setScriptLoaded(true);
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.id = scriptId;
+        script.src = 'https://meet.jit.si/external_api.js';
+        script.async = true;
+        script.onload = () => setScriptLoaded(true);
+        document.body.appendChild(script);
+
+        return () => {
+            // Fix 6: Cleanup on unmount
+            if (apiRef.current) {
+                apiRef.current.dispose();
+                apiRef.current = null;
+            }
+        };
+    }, []);
 
     useEffect(() => {
         if (!meetingDetails.meetLink) {
@@ -30,18 +56,23 @@ export default function MeetingRoom() {
             alert("No meeting link found. Please try starting the call again.");
             return;
         }
+
+        if (!scriptLoaded) {
+            alert("Jitsi SDK is still loading. Please wait a moment.");
+            return;
+        }
         
         setIsJoining(true);
         setHasJoined(true);
         
-        // Extract room name from meetLink
+        // Fix 1: Ensure roomName is sanitized (extracted from meetLink which is already sanitized in backend)
         const roomName = meetingDetails.meetLink.split('/').pop();
         
-        // Initialize Jitsi IFrame API
+        // Fix 2: Exact domain
+        const domain = 'meet.jit.si';
+        
+        // Fix 3 & 4: Critical Config Options
         setTimeout(() => {
-            const domain = 'meet.jit.si';
-            
-            // Check if API is already loaded in window
             if (window.JitsiMeetExternalAPI && jitsiRef.current) {
                 try {
                     const options = {
@@ -52,20 +83,34 @@ export default function MeetingRoom() {
                         configOverwrite: {
                             startWithAudioMuted: false,
                             startWithVideoMuted: false,
-                            prejoinPageEnabled: false,
-                            p2p: { enabled: false },
+                            enableWelcomePage: false,
+                            prejoinPageEnabled: false,        // Fix 4: Removes lobby waiting loop
+                            disableDeepLinking: true,
+                            p2p: {
+                                enabled: true,                  // enables direct peer-to-peer
+                                stunServers: [
+                                    { urls: 'stun:meet-jit-si-turnrelay.jitsi.net:443' },
+                                    { urls: 'stun:stun.l.google.com:19302' },
+                                    { urls: 'stun:stun1.l.google.com:19302' },
+                                ]
+                            },
+                            iceTransportPolicy: 'all',
                             enableLobby: false,
                         },
                         interfaceConfigOverwrite: {
+                            SHOW_JITSI_WATERMARK: false,
+                            SHOW_WATERMARK_FOR_GUESTS: false,
+                            DISABLE_JOIN_LEAVE_NOTIFICATIONS: true,
                             // Customize the UI here if needed
                         },
                         userInfo: {
-                            displayName: userProfile?.name || 'Worqit User'
+                            displayName: userProfile?.name || currentUser?.displayName || currentUser?.email || 'Worqit User',
+                            email: currentUser?.email || ''
                         }
                     };
-                    const api = new window.JitsiMeetExternalAPI(domain, options);
+                    apiRef.current = new window.JitsiMeetExternalAPI(domain, options);
                     
-                    api.addEventListeners({
+                    apiRef.current.addEventListeners({
                         readyToClose: () => navigate(-1),
                         videoConferenceLeft: () => navigate(-1)
                     });
@@ -76,7 +121,6 @@ export default function MeetingRoom() {
                     window.open(meetingDetails.meetLink, '_blank');
                 }
             } else {
-                // FALLBACK: If the <script> tag failed or isn't ready, open in new tab
                 console.warn("Jitsi API not found. Falling back to new tab.");
                 window.open(meetingDetails.meetLink, '_blank');
                 navigate(-1);

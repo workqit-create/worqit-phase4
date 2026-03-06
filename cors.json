@@ -1,6 +1,8 @@
 [
     {
         "origin": [
+            "https://meet.jit.si",
+            "https://worqit.netlify.app",
             "*"
         ],
         "method": [

@@ -91,11 +91,11 @@ app.get('/api/auth/status', (req, res) => {
 app.post('/api/create-call', async (req, res) => {
     try {
         // Generate an extremely unique Jitsi Meet room name
-        // We use a long random string + timestamp to ensure it's never been used before
+        // We use a sanitized prefix + long random string + timestamp to ensure it's never been used before
         // This avoids the "membersOnly" lobby error on public Jitsi servers
         const timestamp = Date.now().toString(36);
-        const randomStr = crypto.randomBytes(16).toString('hex');
-        const roomName = `v-call-${timestamp}-${randomStr}`;
+        const randomStr = crypto.randomBytes(8).toString('hex');
+        const roomName = `worqit-${timestamp}-${randomStr}`.toLowerCase();
         const meetLink = `https://meet.jit.si/${roomName}`;
 
         res.json({ meetLink });
