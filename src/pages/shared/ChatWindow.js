@@ -11,9 +11,6 @@ import { createDocumentRequest } from "../../services/documentService";
 
 import callService from "../../services/callService";
 import { useAuth } from "../../context/AuthContext";
-import { getAuth } from "firebase/auth";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 export default function ChatWindow({ convId, currentUid, currentUser, otherUser, onBack }) {
   const { userProfile } = useAuth();
@@ -57,29 +54,37 @@ export default function ChatWindow({ convId, currentUid, currentUser, otherUser,
     if (calling || !otherUser?.uid) return;
     setCalling(true);
     try {
-      // Notify other user via socket mapping over their CallService
-      const callId = callService.initiateCall(
+      const callerName = userProfile?.name || 'User';
+
+      // Always guarantee the socket is registered before we try to emit
+      callService.connect(currentUid);
+
+      // Generate callId ourselves — never depend on initiateCall() returning it
+      const callId = 'call-' + Date.now();
+
+      // Fire the socket notification (best-effort — doesn't block)
+      callService.initiateCall(
         otherUser.uid,
         currentUid,
-        userProfile?.name || currentUser?.displayName || currentUser?.email || "User",
-        "webrtc-call"
+        callerName,
+        'webrtc-call'
       );
 
-      // Send system message so they can click it to answer
-      await sendMessage(convId, currentUid, `📞 Direct Call started! Check your popup or click here to join.`);
+      // Send a chat message so receiver can also join manually if popup is missed
+      await sendMessage(convId, currentUid, `📞 Direct Call started! Accept the popup to join.`);
 
-      // Navigate immediately as Caller
+      // Navigate immediately as the Caller
       navigate(`/meeting/${callId}`, {
         state: {
           targetUserId: otherUser.uid,
-          otherUserName: otherUser.name || "User",
-          isCaller: true
-        }
+          otherUserName: otherUser.name || 'User',
+          isCaller: true,
+        },
       });
 
     } catch (e) {
       console.error(e);
-      alert("Error starting call. Please try again.");
+      alert('Error starting call. Please try again.');
     }
     setCalling(false);
   }
