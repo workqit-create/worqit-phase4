@@ -20,6 +20,10 @@ import MeetingRoom from "./pages/shared/MeetingRoom";
 import callService from "./services/callService";
 import IncomingCallPopup from "./components/IncomingCallPopup";
 
+import JobPostForm from "./components/JobPostForm";
+import ResumeUploader from "./components/ResumeUploader";
+import Results from "./pages/Results";
+
 // ── Returns the correct home path for each user type ────
 function homePath(userType) {
   if (userType === "hirer") return "/hirer";
@@ -81,6 +85,11 @@ function AppRoutes() {
       <Route path="/meeting/:id" element={
         <MeetingRoute><MeetingRoom /></MeetingRoute>
       } />
+
+      {/* AI Features */}
+      <Route path="/post-job" element={<ProtectedRoute allowedType="hirer"><JobPostForm /></ProtectedRoute>} />
+      <Route path="/upload-resume" element={<ProtectedRoute allowedType="candidate"><ResumeUploader /></ProtectedRoute>} />
+      <Route path="/results" element={<ProtectedRoute allowedType="hirer"><Results /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

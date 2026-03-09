@@ -8,7 +8,26 @@ const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY || 'sk_test_fallback_key');
 require('dotenv').config();
+const multer = require('multer');
+const pdfParse = require('pdf-parse');
+const Groq = require('groq-sdk');
+const admin = require('firebase-admin');
 
+try {
+    if (process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT) {
+        admin.initializeApp({
+            credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT))
+        });
+    } else {
+        console.warn("FIREBASE_ADMIN_SERVICE_ACCOUNT is not set. Admin SDK not fully initialized for some features.");
+        // We won't crash here, but firestore access via admin might fail later
+    }
+} catch (e) {
+    console.error("Firebase Admin Init Error:", e.message);
+}
+
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || 'placeholder_key' });
+const upload = multer({ storage: multer.memoryStorage() });
 const app = express();
 const server = require('http').createServer(app);
 const io = require('socket.io')(server, {
@@ -240,6 +259,127 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 5000;
+
+// ── AI RECRUITMENT PLATFORM (Feature 1: Resume Parser) ──
+app.post('/api/parse-resume', upload.single('resume'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: "No PDF file provided" });
+        }
+
+        const data = await pdfParse(req.file.buffer);
+        const text = data.text;
+
+        const completion = await groq.chat.completions.create({
+            messages: [
+                {
+                    role: "system",
+                    content: "Extract the following information from the resume and return ONLY valid JSON: fullName (string), email (string), phone (string), location (string), totalYearsExperience (number), currentTitle (string), skills (array of strings), languages (array of strings), education (array of objects with: degree, institution, year), workHistory (array of objects with: company, title, startDate, endDate, description), certifications (array of strings), summary (string, 2-3 sentence AI-generated summary of the candidate)."
+                },
+                {
+                    role: "user",
+                    content: `Here is the text extracted from the resume:\n\n${text}`
+                }
+            ],
+            model: "llama3-70b-8192",
+            temperature: 0.1,
+            max_tokens: 2000,
+        });
+
+        const jsonString = completion.choices[0]?.message?.content;
+        let parsedJSON;
+        try {
+            // Try to extract JSON if there's any markdown wrapper
+            const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
+            parsedJSON = JSON.parse(jsonMatch ? jsonMatch[0] : jsonString);
+        } catch (err) {
+            console.error("Failed to parse AI output as JSON:", jsonString);
+            return res.status(500).json({ error: "AI failed to return valid JSON" });
+        }
+
+        res.json(parsedJSON);
+    } catch (error) {
+        console.error("Error parsing resume:", error);
+        res.status(500).json({ error: "Failed to parse resume" });
+    }
+});
+
+// ── AI RECRUITMENT PLATFORM (Feature 2: Job Matching) ──
+app.post('/api/match-candidates', async (req, res) => {
+    try {
+        const { jobTitle, jobDescription, requiredSkills, minExperience, location } = req.body;
+
+        if (!process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT) {
+            return res.status(500).json({ error: "Firebase Admin not configured. Cannot fetch candidates." });
+        }
+
+        const db = admin.firestore();
+        const candidatesSnapshot = await db.collection("candidates").get();
+        const candidates = [];
+        candidatesSnapshot.forEach(doc => {
+            candidates.push({ id: doc.id, ...doc.data() });
+        });
+
+        const matchedCandidates = [];
+
+        // Process in batches of 5 to avoid rate limits
+        const batchSize = 5;
+        for (let i = 0; i < candidates.length; i += batchSize) {
+            const batch = candidates.slice(i, i + batchSize);
+            const batchPromises = batch.map(async (candidate) => {
+                const completion = await groq.chat.completions.create({
+                    messages: [
+                        {
+                            role: "system",
+                            content: `You are an AI recruiter. Given the job requirements and candidate profile, return ONLY a JSON object with: score (number 0-100), matchedSkills (array of strings), missingSkills (array of strings), reasoning (string, 1 sentence explaining the score), experienceMatch (boolean), locationMatch (boolean).`
+                        },
+                        {
+                            role: "user",
+                            content: `Job Requirements: Title: ${jobTitle}, Description: ${jobDescription}, Skills: ${requiredSkills.join(", ")}, Min Experience: ${minExperience}, Location: ${location || 'Any'}\n\nCandidate Profile: ${JSON.stringify(candidate)}`
+                        }
+                    ],
+                    model: "llama3-70b-8192",
+                    temperature: 0.1,
+                });
+
+                const jsonString = completion.choices[0]?.message?.content;
+                let parsedResult;
+                try {
+                    const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
+                    parsedResult = JSON.parse(jsonMatch ? jsonMatch[0] : jsonString);
+                } catch (e) {
+                    parsedResult = { score: 0, reasoning: "Failed to parse AI response" };
+                }
+
+                return {
+                    ...candidate,
+                    candidateId: candidate.id,
+                    score: parsedResult.score || 0,
+                    matchedSkills: parsedResult.matchedSkills || [],
+                    missingSkills: parsedResult.missingSkills || [],
+                    reasoning: parsedResult.reasoning || "",
+                    experienceMatch: parsedResult.experienceMatch || false,
+                    locationMatch: parsedResult.locationMatch || false,
+                };
+            });
+
+            const batchResults = await Promise.all(batchPromises);
+            matchedCandidates.push(...batchResults);
+
+            if (i + batchSize < candidates.length) {
+                await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+            }
+        }
+
+        matchedCandidates.sort((a, b) => b.score - a.score);
+        res.json(matchedCandidates);
+
+    } catch (error) {
+        console.error("Error matching candidates:", error);
+        res.status(500).json({ error: "Failed to match candidates" });
+    }
+});
+
 server.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
 });
