@@ -8,7 +8,7 @@ import { useAuth } from "../../context/AuthContext";
 import { C } from "../shared/theme";
 import { getCandidateApplications } from "../../services/jobService";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from "recharts";
-import { TrendingUp, Eye, FileText, MousePointerClick } from "lucide-react";
+import { TrendingUp, Eye, FileText, MousePointerClick, Download } from "lucide-react";
 
 export default function CandidateAnalytics() {
     const { currentUser } = useAuth();
@@ -79,6 +79,24 @@ export default function CandidateAnalytics() {
 
     const PIE_COLORS = [C.blue, C.yellow, C.green, C.cyan, "#EF4444"];
 
+    const exportCSV = () => {
+        const rows = [
+            ["Month", "Applications"],
+            ...stats.appTimeline.map(r => [r.month, r.applications]),
+            [],
+            ["Status", "Count"],
+            ...stats.statusDist.map(r => [r.name, r.value]),
+        ];
+        const csv = rows.map(r => r.join(",")).join("\n");
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `worqit_analytics_${Date.now()}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
     const S = {
         container: { padding: "40px", color: "#fff", fontFamily: C.font, maxWidth: 1000, margin: "0 auto" },
         grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 20, marginBottom: 32 },
@@ -94,9 +112,17 @@ export default function CandidateAnalytics() {
 
     return (
         <div style={S.container}>
-            <div style={{ marginBottom: 32 }}>
-                <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 6 }}>My Insights</h1>
-                <p style={{ color: C.silver, fontSize: 15 }}>Track your application progress and profile performance.</p>
+            <div style={{ marginBottom: 32, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+                <div>
+                    <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 6 }}>My Insights</h1>
+                    <p style={{ color: C.silver, fontSize: 15 }}>Track your application progress and profile performance.</p>
+                </div>
+                <button
+                    onClick={exportCSV}
+                    style={{ display: "flex", alignItems: "center", gap: 8, background: C.blue, color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: C.font }}
+                >
+                    <Download size={15} /> Export CSV
+                </button>
             </div>
 
             {/* Top Stats */}

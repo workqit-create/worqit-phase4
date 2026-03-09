@@ -14,7 +14,7 @@ import { Lock } from "lucide-react";
 export default function PostJob() {
   const { currentUser, userProfile } = useAuth();
   const [form, setForm] = useState({
-    title: "", company: "", location: "", salary: "",
+    title: "", company: "", location: "", salaryAmount: "", currency: "AED",
     type: "Full-time", description: "", skills: "",
   });
   const [posting, setPosting] = useState(false);
@@ -52,13 +52,13 @@ export default function PostJob() {
         title: form.title.trim(),
         company: form.company.trim() || userProfile?.companyName || "",
         location: form.location.trim(),
-        salary: form.salary.trim(),
+        salary: form.salaryAmount ? `${form.currency} ${form.salaryAmount}` : "",
         type: form.type,
         description: form.description.trim(),
         skills: skillsArray,
       });
       setPosted(true);
-      setForm({ title: "", company: "", location: "", salary: "", type: "Full-time", description: "", skills: "" });
+      setForm({ title: "", company: "", location: "", salaryAmount: "", currency: "AED", type: "Full-time", description: "", skills: "" });
       setTimeout(() => setPosted(false), 4000);
     } catch { setError("Failed to post job. Please try again."); }
     setPosting(false);
@@ -144,10 +144,23 @@ export default function PostJob() {
                   onBlur={e => e.target.style.borderColor = C.line} />
               </FormField>
               <FormField label="Salary Range">
-                <input style={inputStyle} value={form.salary} onChange={e => setForm(p => ({ ...p, salary: e.target.value }))}
-                  placeholder="e.g. AED 15,000 – 22,000 / month"
-                  onFocus={e => e.target.style.borderColor = "rgba(26,111,232,.5)"}
-                  onBlur={e => e.target.style.borderColor = C.line} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <select
+                    value={form.currency}
+                    onChange={e => setForm(p => ({ ...p, currency: e.target.value }))}
+                    style={{ ...inputStyle, width: 90, flexShrink: 0, cursor: "pointer" }}
+                  >
+                    {["AED", "USD", "GBP", "EUR", "SAR", "INR", "PKR", "PHP", "MYR", "SGD"].map(c => (
+                      <option key={c} value={c} style={{ background: "#0a0f1e" }}>{c}</option>
+                    ))}
+                  </select>
+                  <input style={{ ...inputStyle, flex: 1 }}
+                    value={form.salaryAmount}
+                    onChange={e => setForm(p => ({ ...p, salaryAmount: e.target.value }))}
+                    placeholder="e.g. 15,000 – 22,000 / month"
+                    onFocus={e => e.target.style.borderColor = "rgba(26,111,232,.5)"}
+                    onBlur={e => e.target.style.borderColor = C.line} />
+                </div>
               </FormField>
             </div>
             <FormField label="Job Type">

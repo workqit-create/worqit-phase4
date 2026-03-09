@@ -21,13 +21,13 @@ import Billing from "./Billing";
 import HirerAnalytics from "./Analytics";
 
 const NAV = [
+  { path: "analytics", label: "Dashboard", icon: "📊" },
   { path: "", label: "Post a Job", icon: "✏️" },
   { path: "jobs", label: "My Jobs", icon: "💼" },
   { path: "discover", label: "Discover", icon: "🔍" },
   { path: "documents", label: "Documents", icon: "📁" },
   { path: "templates", label: "Templates", icon: "📄" },
   { path: "founding", label: "Founding 100", icon: "🏆" },
-  { path: "analytics", label: "Insights", icon: "📈" },
   { path: "billing", label: "Plans & Billing", icon: "💳" },
   { path: "profile", label: "Profile", icon: "🏢" },
 ];
@@ -74,15 +74,20 @@ export default function HirerDashboard() {
       <div style={{ width: 280, borderRight: `1px solid ${C.line}`, background: C.ink, display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh" }} className="wq-sidebar">
         <div style={{ padding: "20px 20px 16px", borderBottom: `1px solid ${C.line}`, display: "flex", alignItems: "center", gap: 10 }}>
           <img src={LOGO_HORIZ} alt="Worqit" style={{ height: 36, width: "auto" }} />
-          <div style={{ marginLeft: "auto", cursor: "pointer", position: "relative" }} onClick={() => setShowNotifs(!showNotifs)}>
-            <span style={{ fontSize: 20 }}>🔔</span>
-            {unreadNotifs > 0 && (
-              <span style={{ position: "absolute", top: -4, right: -8, background: C.grad, borderRadius: "100px", padding: "1px 5px", fontSize: 10, fontWeight: 700, color: "#fff" }}>
-                {unreadNotifs > 9 ? "9+" : unreadNotifs}
-              </span>
-            )}
+          <div style={{ marginLeft: "auto", position: "relative" }}>
+            <div
+              style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
+              onClick={() => setShowNotifs(!showNotifs)}
+            >
+              <span style={{ fontSize: 20 }}>🔔</span>
+              {unreadNotifs > 0 && (
+                <span style={{ position: "absolute", top: -4, right: -8, background: C.grad, borderRadius: "100px", padding: "1px 5px", fontSize: 10, fontWeight: 700, color: "#fff" }}>
+                  {unreadNotifs > 9 ? "9+" : unreadNotifs}
+                </span>
+              )}
+            </div>
             {showNotifs && (
-              <div style={{ position: "absolute", top: 30, left: 30 }} onClick={e => e.stopPropagation()}>
+              <div onClick={e => e.stopPropagation()}>
                 <NotificationDropdown
                   userId={currentUser?.uid}
                   onClose={() => setShowNotifs(false)}

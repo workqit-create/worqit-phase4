@@ -380,6 +380,35 @@ app.post('/api/match-candidates', async (req, res) => {
     }
 });
 
+// ── AI Interview Questions Generator ──────────────────
+app.post('/api/generate-interview-questions', async (req, res) => {
+    try {
+        const { prompt } = req.body;
+        if (!prompt) return res.status(400).json({ error: "Prompt is required" });
+
+        const completion = await groq.chat.completions.create({
+            messages: [
+                {
+                    role: "system",
+                    content: "You are an expert HR interviewer. Generate clear, concise interview questions based on the given prompt. Format each question on its own line, numbered."
+                },
+                {
+                    role: "user",
+                    content: prompt
+                }
+            ],
+            model: "llama3-70b-8192",
+            temperature: 0.7,
+        });
+
+        const questions = completion.choices[0]?.message?.content || "Could not generate questions.";
+        res.json({ questions });
+    } catch (error) {
+        console.error("Error generating questions:", error);
+        res.status(500).json({ error: "Failed to generate questions" });
+    }
+});
+
 server.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
 });

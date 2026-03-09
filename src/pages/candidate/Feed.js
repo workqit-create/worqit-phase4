@@ -19,6 +19,9 @@ export default function CandidateFeed() {
   const [applying, setApplying] = useState(null);
   const [toast, setToast] = useState("");
   const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState("");
+  const [filterLocation, setFilterLocation] = useState("");
+  const [sortBy, setSortBy] = useState("match");
 
   useEffect(() => {
     async function load() {
@@ -66,13 +69,22 @@ export default function CandidateFeed() {
     setTimeout(() => setToast(""), 3500);
   }
 
-  const filtered = jobs.filter(j =>
-    !search ||
-    j.title?.toLowerCase().includes(search.toLowerCase()) ||
-    j.company?.toLowerCase().includes(search.toLowerCase()) ||
-    j.location?.toLowerCase().includes(search.toLowerCase()) ||
-    (j.skills || []).some(s => s.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filtered = jobs
+    .filter(j =>
+      (!search ||
+        j.title?.toLowerCase().includes(search.toLowerCase()) ||
+        j.company?.toLowerCase().includes(search.toLowerCase()) ||
+        j.location?.toLowerCase().includes(search.toLowerCase()) ||
+        (j.skills || []).some(s => s.toLowerCase().includes(search.toLowerCase())))
+      && (!filterType || j.type === filterType)
+      && (!filterLocation || j.location?.toLowerCase().includes(filterLocation.toLowerCase()))
+    )
+    .sort((a, b) => {
+      if (sortBy === "match") return (b.matchScore || 0) - (a.matchScore || 0);
+      if (sortBy === "newest") return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+      if (sortBy === "salary") return (b.salary || "").localeCompare(a.salary || "");
+      return 0;
+    });
 
   return (
     <div style={{ padding: "32px 36px", maxWidth: 860, margin: "0 auto" }}>
@@ -97,7 +109,7 @@ export default function CandidateFeed() {
         </p>
       </div>
 
-      {/* Search */}
+      {/* Search + Filters */}
       <input
         value={search}
         onChange={e => setSearch(e.target.value)}
@@ -106,10 +118,38 @@ export default function CandidateFeed() {
           width: "100%", background: "rgba(255,255,255,.05)",
           border: `1px solid ${C.line}`, borderRadius: 10,
           padding: "12px 18px", color: "#fff", fontSize: 14,
-          fontFamily: C.font, outline: "none", marginBottom: 24,
+          fontFamily: C.font, outline: "none", marginBottom: 12,
           boxSizing: "border-box",
         }}
       />
+      {/* Filter bar */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 24, flexWrap: "wrap" }}>
+        <select
+          value={filterType}
+          onChange={e => setFilterType(e.target.value)}
+          style={{ background: "rgba(255,255,255,.05)", border: `1px solid ${C.line}`, borderRadius: 8, padding: "8px 12px", color: "#fff", fontFamily: C.font, outline: "none", fontSize: 13, cursor: "pointer" }}
+        >
+          <option value="">All Types</option>
+          {["Full-time", "Part-time", "Contract", "Freelance", "Internship"].map(t => (
+            <option key={t} value={t} style={{ background: "#0a0f1e" }}>{t}</option>
+          ))}
+        </select>
+        <input
+          value={filterLocation}
+          onChange={e => setFilterLocation(e.target.value)}
+          placeholder="Filter by location…"
+          style={{ background: "rgba(255,255,255,.05)", border: `1px solid ${C.line}`, borderRadius: 8, padding: "8px 12px", color: "#fff", fontFamily: C.font, outline: "none", fontSize: 13, flex: 1, minWidth: 140 }}
+        />
+        <select
+          value={sortBy}
+          onChange={e => setSortBy(e.target.value)}
+          style={{ background: "rgba(255,255,255,.05)", border: `1px solid ${C.line}`, borderRadius: 8, padding: "8px 12px", color: "#fff", fontFamily: C.font, outline: "none", fontSize: 13, cursor: "pointer" }}
+        >
+          <option value="match">Sort: Best Match</option>
+          <option value="newest">Sort: Newest</option>
+          <option value="salary">Sort: Salary</option>
+        </select>
+      </div>
 
       {/* Jobs */}
       {loading ? (
@@ -139,6 +179,7 @@ export default function CandidateFeed() {
 
 function JobCard({ job, matchScore, applied, applying, onApply }) {
   const skills = job.skills || [];
+  const [expanded, setExpanded] = useState(false);
   const [swipeOffset, setSwipeOffset] = useState(0);
 
   const swipeHandlers = useSwipeable({
@@ -215,10 +256,17 @@ function JobCard({ job, matchScore, applied, applying, onApply }) {
             {job.type && <span style={{ color: C.silver, fontSize: 13 }}>⏱ {job.type}</span>}
           </div>
           {job.description && (
-            <p style={{
-              color: C.silver, fontSize: 13, lineHeight: 1.6, margin: "0 0 12px",
-              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-            }}>{job.description}</p>
+            <div>
+              <p style={{
+                color: C.silver, fontSize: 13, lineHeight: 1.6, margin: "0 0 4px",
+                ...(expanded ? {} : { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }),
+              }}>{job.description}</p>
+              {job.description.length > 120 && (
+                <button onClick={e => { e.stopPropagation(); setExpanded(!expanded); }} style={{ background: "none", border: "none", color: C.cyan, fontSize: 12, cursor: "pointer", padding: 0, fontWeight: 600 }}>
+                  {expanded ? "Show less ↑" : "Show full description ↓"}
+                </button>
+              )}
+            </div>
           )}
           {skills.length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>

@@ -10,7 +10,7 @@ import { getHirerJobs } from "../../services/jobService";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../firebase";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar } from "recharts";
-import { Briefcase, Users, UserCheck, TrendingUp } from "lucide-react";
+import { Briefcase, Users, UserCheck, TrendingUp, Download } from "lucide-react";
 
 export default function HirerAnalytics() {
     const { currentUser } = useAuth();
@@ -83,6 +83,30 @@ export default function HirerAnalytics() {
         fetchAnalytics();
     }, [currentUser]);
 
+    const exportCSV = () => {
+        const rows = [
+            ["Metric", "Value"],
+            ["Active Jobs", stats.activeJobs],
+            ["Total Applicants", stats.totalApplicants],
+            ["Shortlisted", stats.shortlisted],
+            ["Conversion Rate (%)", stats.conversionRate],
+            [],
+            ["Month", "Applicants"],
+            ...stats.applicationTimeline.map(r => [r.month, r.applicants]),
+            [],
+            ["Job Title", "Applicants", "Shortlisted"],
+            ...stats.jobPerformance.map(r => [r.title, r.applicants, r.shortlisted]),
+        ];
+        const csv = rows.map(r => r.join(",")).join("\n");
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `worqit_hirer_analytics_${Date.now()}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
     const S = {
         container: { padding: "40px", color: "#fff", fontFamily: C.font, maxWidth: 1100, margin: "0 auto" },
         grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20, marginBottom: 32 },
@@ -98,9 +122,17 @@ export default function HirerAnalytics() {
 
     return (
         <div style={S.container}>
-            <div style={{ marginBottom: 32 }}>
-                <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 6 }}>Hiring Overview</h1>
-                <p style={{ color: C.silver, fontSize: 15 }}>Track your job postings and candidate pipeline health.</p>
+            <div style={{ marginBottom: 32, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+                <div>
+                    <h1 style={{ fontSize: 32, fontWeight: 800, marginBottom: 6 }}>Hiring Overview</h1>
+                    <p style={{ color: C.silver, fontSize: 15 }}>Track your job postings and candidate pipeline health.</p>
+                </div>
+                <button
+                    onClick={exportCSV}
+                    style={{ display: "flex", alignItems: "center", gap: 8, background: C.blue, color: "#fff", border: "none", borderRadius: 8, padding: "10px 18px", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: C.font }}
+                >
+                    <Download size={15} /> Export CSV
+                </button>
             </div>
 
             {/* Top Stats */}

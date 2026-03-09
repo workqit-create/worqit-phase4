@@ -208,26 +208,33 @@ export default function ChatWindow({ convId, currentUid, currentUser, otherUser,
         )}
         {messages.map(msg => {
           const mine = msg.senderId === currentUid;
+          const time = msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
           return (
             <div key={msg.id} style={{
-              display: "flex", justifyContent: mine ? "flex-end" : "flex-start",
-              marginBottom: 10,
+              display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start",
+              marginBottom: 14,
             }}>
               <div style={{
-                maxWidth: "72%",
+                maxWidth: "75%",
                 background: mine
                   ? "linear-gradient(135deg,#1A6FE8,#0035CC)"
                   : C.ink3,
                 border: mine ? "none" : `1px solid ${C.line}`,
                 borderRadius: mine ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                padding: "10px 14px",
+                padding: "11px 16px",
                 color: mine ? "#fff" : C.text,
                 fontSize: 14,
                 lineHeight: 1.5,
                 wordBreak: "break-word",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
               }}>
                 {msg.text}
               </div>
+              {time && (
+                <div style={{ fontSize: 10, color: C.silver, marginTop: 4, opacity: 0.7, padding: mine ? "0 4px 0 0" : "0 0 0 4px" }}>
+                  {time}
+                </div>
+              )}
             </div>
           );
         })}
