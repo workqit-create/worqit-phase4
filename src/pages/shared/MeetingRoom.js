@@ -120,23 +120,27 @@ export default function MeetingRoom() {
         };
         initSegmenter();
 
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            .then((stream) => {
-                streamRef.current = stream;
-                if (myVideo.current) myVideo.current.srcObject = stream;
-                if (isCaller) {
-                    createCallerPeer(stream);
-                } else {
-                    if (pendingOfferRef.current) {
-                        createReceiverPeer(stream, pendingOfferRef.current);
-                        pendingOfferRef.current = null;
-                    }
-                }
-            })
-            .catch(() => { alert('Camera/microphone permission denied.'); navigate(-1); });
-
         const handleSignal = (data) => {
             if (data.fromUserId !== targetUserId) return;
+
+            if (data.signal.type === 'ready-check') {
+                if (!isCaller && streamRef.current) {
+                    callService.sendSignal(targetUserId, currentUser.uid, { type: 'ready' });
+                }
+                return;
+            }
+
+            if (data.signal.type === 'ready') {
+                if (isCaller) {
+                    if (streamRef.current && !connectionRef.current) {
+                        createCallerPeer(streamRef.current);
+                    } else {
+                        pendingOfferRef.current = { type: 'ready' };
+                    }
+                }
+                return;
+            }
+
             if (isCaller) {
                 if (connectionRef.current && !connectionRef.current.destroyed) connectionRef.current.signal(data.signal);
             } else {
@@ -148,6 +152,31 @@ export default function MeetingRoom() {
                 }
             }
         };
+
+        callService.listenForSignals(handleSignal);
+
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then((stream) => {
+                streamRef.current = stream;
+                if (myVideo.current) myVideo.current.srcObject = stream;
+
+                if (isCaller) {
+                    if (pendingOfferRef.current?.type === 'ready') {
+                        createCallerPeer(stream);
+                        pendingOfferRef.current = null;
+                    } else {
+                        callService.sendSignal(targetUserId, currentUser.uid, { type: 'ready-check' });
+                    }
+                } else {
+                    if (pendingOfferRef.current && pendingOfferRef.current.type === 'offer') {
+                        createReceiverPeer(stream, pendingOfferRef.current);
+                        pendingOfferRef.current = null;
+                    } else {
+                        callService.sendSignal(targetUserId, currentUser.uid, { type: 'ready' });
+                    }
+                }
+            })
+            .catch(() => { alert('Camera/microphone permission denied.'); navigate(-1); });
 
         const handleCallEnded = () => {
             showToast('The other person ended the call.');
