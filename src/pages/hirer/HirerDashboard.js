@@ -25,6 +25,7 @@ const NAV = [
   { path: "", label: "Post a Job", icon: "✏️" },
   { path: "jobs", label: "My Jobs", icon: "💼" },
   { path: "discover", label: "Discover", icon: "🔍" },
+  { path: "messages", label: "Messages", icon: "💬" },
   { path: "documents", label: "Documents", icon: "📁" },
   { path: "templates", label: "Templates", icon: "📄" },
   { path: "founding", label: "Founding 100", icon: "🏆" },

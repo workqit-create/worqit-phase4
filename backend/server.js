@@ -246,6 +246,31 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('end-call', (data) => {
+        const targetSocketId = connectedUsers.get(data.targetUserId);
+        if (targetSocketId) {
+            io.to(targetSocketId).emit('call-ended');
+        }
+    });
+
+    socket.on('control-event', (data) => {
+        const targetSocketId = connectedUsers.get(data.targetUserId);
+        if (targetSocketId) {
+            io.to(targetSocketId).emit('control-event', data.eventData);
+        }
+    });
+
+    socket.on('chat-message', (data) => {
+        const targetSocketId = connectedUsers.get(data.targetUserId);
+        if (targetSocketId) {
+            io.to(targetSocketId).emit('chat-message', {
+                fromUserName: data.fromUserName,
+                message: data.message,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+        }
+    });
+
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
         // Find and remove the user from the map

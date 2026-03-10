@@ -258,12 +258,21 @@ function JobCard({ job, matchScore, applied, applying, onApply }) {
           {job.description && (
             <div>
               <p style={{
-                color: C.silver, fontSize: 13, lineHeight: 1.6, margin: "0 0 4px",
+                color: C.silver, fontSize: 13, lineHeight: 1.6, margin: "0 0 10px",
+                whiteSpace: "pre-line",
                 ...(expanded ? {} : { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }),
               }}>{job.description}</p>
               {job.description.length > 120 && (
-                <button onClick={e => { e.stopPropagation(); setExpanded(!expanded); }} style={{ background: "none", border: "none", color: C.cyan, fontSize: 12, cursor: "pointer", padding: 0, fontWeight: 600 }}>
-                  {expanded ? "Show less ↑" : "Show full description ↓"}
+                <button onClick={e => { e.stopPropagation(); setExpanded(!expanded); }} style={{
+                  background: "rgba(26,111,232,.1)", border: "1px solid rgba(26,111,232,.3)",
+                  color: C.cyan, fontSize: 12, cursor: "pointer", padding: "6px 14px",
+                  fontWeight: 700, borderRadius: 8, transition: "all .2s", marginBottom: 6,
+                  fontFamily: C.font
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background = "rgba(26,111,232,.2)"}
+                  onMouseLeave={e => e.currentTarget.style.background = "rgba(26,111,232,.1)"}
+                >
+                  {expanded ? "Show less ↑" : "Read full description ↓"}
                 </button>
               )}
             </div>

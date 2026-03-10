@@ -46,6 +46,48 @@ class CallService {
         }
     }
 
+    endCall(targetUserId) {
+        if (this.socket) {
+            this.socket.emit('end-call', { targetUserId });
+        }
+    }
+
+    sendControlEvent(targetUserId, eventData) {
+        if (this.socket) {
+            this.socket.emit('control-event', { targetUserId, eventData });
+        }
+    }
+
+    listenForControlEvents(callback) {
+        if (this.socket) {
+            this.socket.on('control-event', callback);
+        }
+    }
+
+    stopListeningForControlEvents(callback) {
+        if (this.socket) {
+            this.socket.off('control-event', callback);
+        }
+    }
+
+    sendChatMessage(targetUserId, fromUserName, message) {
+        if (this.socket) {
+            this.socket.emit('chat-message', { targetUserId, fromUserName, message });
+        }
+    }
+
+    listenForChatMessages(callback) {
+        if (this.socket) {
+            this.socket.on('chat-message', callback);
+        }
+    }
+
+    stopListeningForChatMessages(callback) {
+        if (this.socket) {
+            this.socket.off('chat-message', callback);
+        }
+    }
+
     initiateCall(targetUserId, fromUserId, fromUserName, meetLink) {
         if (this.socket) {
             const callId = Date.now().toString();

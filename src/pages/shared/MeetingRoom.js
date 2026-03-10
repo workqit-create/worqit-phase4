@@ -17,8 +17,8 @@ export default function MeetingRoom() {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
 
-    const targetUserId = location.state?.targetUserId || '';
-    const otherUserName = location.state?.otherUserName || 'Unknown User';
+    const targetUserId = new URLSearchParams(location.search).get('host') || location.state?.targetUserId || '';
+    const otherUserName = location.state?.otherUserName || 'Guest';
     const isCaller = location.state?.isCaller ?? false;
 
     const streamRef = useRef(null);
@@ -41,6 +41,8 @@ export default function MeetingRoom() {
     const [showChat, setShowChat] = useState(false);
     const [chatMessages, setChatMessages] = useState([]);
     const [chatInput, setChatInput] = useState('');
+    const [remoteBgBlur, setRemoteBgBlur] = useState(false);
+    const [remoteHandRaised, setRemoteHandRaised] = useState(false);
     const [showAiPanel, setShowAiPanel] = useState(false);
     const [aiPrompt, setAiPrompt] = useState('');
     const [aiQuestions, setAiQuestions] = useState('');
@@ -61,10 +63,13 @@ export default function MeetingRoom() {
     };
 
     const leaveCall = useCallback(() => {
+        if (targetUserId) {
+            callService.endCall(targetUserId);
+        }
         if (connectionRef.current) { connectionRef.current.destroy(); connectionRef.current = null; }
         stopAllTracks();
         navigate(-1);
-    }, [navigate]);
+    }, [navigate, targetUserId]);
 
     const createCallerPeer = useCallback((stream) => {
         const peer = new Peer({ initiator: true, trickle: true, stream, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
@@ -123,14 +128,40 @@ export default function MeetingRoom() {
                 }
             }
         };
+
+        const handleCallEnded = () => {
+            showToast('The other person ended the call.');
+            leaveCall();
+        };
+
+        const handleControlEvent = (data) => {
+            if (data.type === 'bgBlur') setRemoteBgBlur(data.value);
+            if (data.type === 'handRaised') {
+                setRemoteHandRaised(data.value);
+                if (data.value) showToast(`${otherUserName} raised their hand`);
+            }
+        };
+
+        const handleChatMessage = (data) => {
+            setChatMessages(prev => [...prev, { from: data.fromUserName, text: data.message, time: data.time }]);
+            if (!showChat) showToast(`New message from ${data.fromUserName}`);
+        };
+
         callService.listenForSignals(handleSignal);
+        callService.on('call-ended', handleCallEnded);
+        callService.listenForControlEvents(handleControlEvent);
+        callService.listenForChatMessages(handleChatMessage);
+
         return () => {
             callService.stopListeningForSignals(handleSignal);
+            callService.off('call-ended');
+            callService.stopListeningForControlEvents(handleControlEvent);
+            callService.stopListeningForChatMessages(handleChatMessage);
             if (connectionRef.current) { connectionRef.current.destroy(); connectionRef.current = null; }
             stopAllTracks();
         };
         // eslint-disable-next-line
-    }, [targetUserId, currentUser?.uid]);
+    }, [targetUserId, currentUser?.uid, isCaller, createCallerPeer, createReceiverPeer, leaveCall, otherUserName, showChat]);
 
     const toggleMic = () => {
         if (!streamRef.current) return;
@@ -166,6 +197,7 @@ export default function MeetingRoom() {
                 const sender = connectionRef.current._pc?.getSenders().find(s => s.track?.kind === 'video');
                 if (sender) sender.replaceTrack(camTrack);
             }
+            if (myVideo.current) myVideo.current.srcObject = streamRef.current;
             showToast('Screen sharing stopped.');
         } else {
             try {
@@ -176,7 +208,16 @@ export default function MeetingRoom() {
                     const sender = connectionRef.current._pc?.getSenders().find(s => s.track?.kind === 'video');
                     if (sender) sender.replaceTrack(screenTrack);
                 }
-                screenTrack.onended = () => { setIsSharingScreen(false); showToast('Screen sharing stopped.'); };
+                screenTrack.onended = () => {
+                    setIsSharingScreen(false);
+                    if (myVideo.current) myVideo.current.srcObject = streamRef.current;
+                    const camTrack = streamRef.current?.getVideoTracks()[0];
+                    if (camTrack && connectionRef.current && !connectionRef.current.destroyed) {
+                        const sender = connectionRef.current._pc?.getSenders().find(s => s.track?.kind === 'video');
+                        if (sender) sender.replaceTrack(camTrack);
+                    }
+                    showToast('Screen sharing stopped.');
+                };
                 if (myVideo.current) myVideo.current.srcObject = screenStream;
                 setIsSharingScreen(true);
                 showToast('Screen sharing started.');
@@ -185,7 +226,19 @@ export default function MeetingRoom() {
     };
 
     // ── Background Blur ──
-    const toggleBgBlur = () => setBgBlur(p => !p);
+    const toggleBgBlur = () => {
+        const newValue = !bgBlur;
+        setBgBlur(newValue);
+        callService.sendControlEvent(targetUserId, { type: 'bgBlur', value: newValue });
+    };
+
+    // ── Raise Hand ──
+    const toggleHandRaise = () => {
+        const newValue = !handRaised;
+        setHandRaised(newValue);
+        showToast(newValue ? 'Hand raised! ✋' : 'Hand lowered.');
+        callService.sendControlEvent(targetUserId, { type: 'handRaised', value: newValue });
+    };
 
     // ── AI Questions ──
     const generateAIQuestions = async () => {
@@ -213,13 +266,19 @@ export default function MeetingRoom() {
     // ── In-call chat (local only — no signaling in this pass) ──
     const sendChatMessage = () => {
         if (!chatInput.trim()) return;
-        setChatMessages(prev => [...prev, { from: 'You', text: chatInput, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
+        const msg = chatInput;
+        setChatMessages(prev => [...prev, { from: 'You', text: msg, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
         setChatInput('');
+        callService.sendChatMessage(targetUserId, currentUser.displayName || 'Guest', msg);
     };
 
     // ── Copy invite link ──
     const copyInviteLink = () => {
-        const link = window.location.href;
+        const linkUrl = new URL(window.location.href);
+        if (!linkUrl.searchParams.has('host')) {
+            linkUrl.searchParams.set('host', currentUser.uid);
+        }
+        const link = linkUrl.toString();
         navigator.clipboard.writeText(link).then(() => showToast('Invite link copied!')).catch(() => showToast('Could not copy link.'));
         setShowInvite(false);
     };
@@ -251,7 +310,7 @@ export default function MeetingRoom() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{ width: 10, height: 10, borderRadius: '50%', background: callAccepted ? '#34c759' : '#ff9f0a', boxShadow: callAccepted ? '0 0 8px #34c759' : '0 0 8px #ff9f0a' }} />
                         <span style={{ color: '#fff', fontWeight: 600, fontSize: 15 }}>Worqit Video Call</span>
-                        {handRaised && <span style={{ fontSize: 18, animation: 'wave 0.8s ease infinite alternate' }}>✋</span>}
+                        {remoteHandRaised && <span style={{ fontSize: 18, animation: 'wave 0.8s ease infinite alternate' }} title={`${otherUserName} raised their hand`}>✋</span>}
                     </div>
                     <span style={{ color: C.silver, fontSize: 13 }}>{status}</span>
                 </div>
@@ -261,7 +320,7 @@ export default function MeetingRoom() {
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
                 {/* Video area */}
                 <div style={{ flex: 1, position: 'relative', background: '#000', overflow: 'hidden' }}>
-                    <video playsInline ref={userVideo} autoPlay style={{ width: '100%', height: '100%', objectFit: 'cover', display: callAccepted ? 'block' : 'none' }} />
+                    <video playsInline ref={userVideo} autoPlay style={{ width: '100%', height: '100%', objectFit: 'cover', display: callAccepted ? 'block' : 'none', filter: remoteBgBlur ? 'blur(12px)' : 'none' }} />
                     {!callAccepted && (
                         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(180deg,#060C1A 0%,#040914 100%)', gap: 20 }}>
                             <div style={{ width: 96, height: 96, borderRadius: '50%', background: C.grad, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38, color: '#fff', fontWeight: 700, animation: 'ringPulse 2s infinite' }}>
@@ -352,7 +411,7 @@ export default function MeetingRoom() {
                 <Ctrl onClick={toggleBgBlur} label="Background Blur" bg={bgBlur ? '#1a6fe8' : 'rgba(255,255,255,0.12)'}>
                     <span style={{ fontSize: 14 }}>🌫</span>
                 </Ctrl>
-                <Ctrl onClick={() => { setHandRaised(p => !p); showToast(handRaised ? 'Hand lowered.' : 'Hand raised! ✋'); }} label="Raise Hand" bg={handRaised ? '#f59e0b' : 'rgba(255,255,255,0.12)'}>
+                <Ctrl onClick={toggleHandRaise} label="Raise Hand" bg={handRaised ? '#f59e0b' : 'rgba(255,255,255,0.12)'}>
                     <Hand size={20} color="#fff" />
                 </Ctrl>
                 <Ctrl onClick={() => { setShowAiPanel(p => !p); setShowChat(false); }} label="AI Questions" bg={showAiPanel ? '#1a6fe8' : 'rgba(255,255,255,0.12)'}>
@@ -380,7 +439,7 @@ export default function MeetingRoom() {
             {showInvite && (
                 <Modal title="Add Participant / Invite" onClose={() => setShowInvite(false)}>
                     <p style={{ color: C.silver, fontSize: 13, marginBottom: 16 }}>Share this meeting link with others to join:</p>
-                    <div style={{ background: 'rgba(255,255,255,.06)', borderRadius: 8, padding: '10px 14px', color: C.cyan, fontSize: 12, wordBreak: 'break-all', marginBottom: 16 }}>{window.location.href}</div>
+                    <div style={{ background: 'rgba(255,255,255,.06)', borderRadius: 8, padding: '10px 14px', color: C.cyan, fontSize: 12, wordBreak: 'break-all', marginBottom: 16 }}>{window.location.href.includes('?host=') ? window.location.href : `${window.location.href}?host=${currentUser?.uid}`}</div>
                     <button onClick={copyInviteLink} style={{ background: C.blue, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', width: '100%' }}>
                         📋 Copy Invite Link
                     </button>
