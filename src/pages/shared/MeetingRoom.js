@@ -46,6 +46,9 @@ export default function MeetingRoom() {
     const [bgBlur, setBgBlur] = useState(false);
     const [handRaised, setHandRaised] = useState(false);
     const [showChat, setShowChat] = useState(false);
+    const showChatRef = useRef(false);
+    useEffect(() => { showChatRef.current = showChat; }, [showChat]);
+
     const [chatMessages, setChatMessages] = useState([]);
     const [chatInput, setChatInput] = useState('');
     const [remoteBgBlur, setRemoteBgBlur] = useState(false);
@@ -85,7 +88,7 @@ export default function MeetingRoom() {
             connectionRef.current = null;
         }
         const peer = new Peer({ initiator: true, trickle: true, stream, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
-        peer.on('signal', (data) => callService.sendSignal(targetUserId, currentUser.uid, data));
+        peer.on('signal', (data) => callService.sendSignal(targetUserId, currentUser?.uid, data));
         peer.on('stream', (remoteStream) => {
             setCallAccepted(true);
             setStatus(`Connected with ${otherUserName}`);
@@ -94,7 +97,7 @@ export default function MeetingRoom() {
         peer.on('close', leaveCall);
         peer.on('error', () => leaveCall());
         connectionRef.current = peer;
-    }, [targetUserId, currentUser, otherUserName, leaveCall]);
+    }, [targetUserId, currentUser?.uid, otherUserName, leaveCall]);
 
     const createReceiverPeer = useCallback((stream, offerSignal) => {
         if (connectionRef.current) {
@@ -102,7 +105,7 @@ export default function MeetingRoom() {
             connectionRef.current = null;
         }
         const peer = new Peer({ initiator: false, trickle: true, stream, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
-        peer.on('signal', (data) => callService.sendSignal(targetUserId, currentUser.uid, data));
+        peer.on('signal', (data) => callService.sendSignal(targetUserId, currentUser?.uid, data));
         peer.on('stream', (remoteStream) => {
             setCallAccepted(true);
             setStatus(`Connected with ${otherUserName}`);
@@ -112,7 +115,7 @@ export default function MeetingRoom() {
         peer.on('error', () => leaveCall());
         peer.signal(offerSignal);
         connectionRef.current = peer;
-    }, [targetUserId, currentUser, otherUserName, leaveCall]);
+    }, [targetUserId, currentUser?.uid, otherUserName, leaveCall]);
 
     useEffect(() => {
         if (!targetUserId || !currentUser?.uid) return;
@@ -201,7 +204,7 @@ export default function MeetingRoom() {
 
         const handleChatMessage = (data) => {
             setChatMessages(prev => [...prev, { from: data.fromUserName, text: data.message, time: data.time }]);
-            if (!showChat) showToast(`New message from ${data.fromUserName}`);
+            if (!showChatRef.current) showToast(`New message from ${data.fromUserName}`);
         };
 
         callService.listenForSignals(handleSignal);
@@ -218,7 +221,7 @@ export default function MeetingRoom() {
             stopAllTracks();
         };
         // eslint-disable-next-line
-    }, [targetUserId, currentUser?.uid, isCaller, createCallerPeer, createReceiverPeer, leaveCall, otherUserName, showChat]);
+    }, [targetUserId, currentUser?.uid, isCaller]);
 
     const toggleMic = () => {
         if (!streamRef.current) return;
@@ -380,7 +383,7 @@ export default function MeetingRoom() {
         const msg = chatInput;
         setChatMessages(prev => [...prev, { from: 'You', text: msg, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
         setChatInput('');
-        callService.sendChatMessage(targetUserId, currentUser.displayName || 'Guest', msg);
+        callService.sendChatMessage(targetUserId, currentUser?.name || currentUser?.displayName || 'Guest', msg);
     };
 
     // ── Copy invite link ──
