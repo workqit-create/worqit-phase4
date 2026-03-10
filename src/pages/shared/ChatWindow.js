@@ -59,22 +59,21 @@ export default function ChatWindow({ convId, currentUid, currentUser, otherUser,
       // Always guarantee the socket is registered before we try to emit
       callService.connect(currentUid);
 
-      // Generate callId ourselves — never depend on initiateCall() returning it
-      const callId = 'call-' + Date.now();
-
-      // Fire the socket notification (best-effort — doesn't block)
-      callService.initiateCall(
+      // Fire the socket notification synchronously to get the callId
+      const callId = callService.initiateCall(
         otherUser.uid,
         currentUid,
         callerName,
         'webrtc-call'
       );
 
+      const finalCallId = callId || ('call-' + Date.now());
+
       // Send a chat message so receiver can also join manually if popup is missed
       await sendMessage(convId, currentUid, `📞 Direct Call started! Accept the popup to join.`);
 
       // Navigate immediately as the Caller
-      navigate(`/meeting/${callId}`, {
+      navigate(`/meeting/${finalCallId}`, {
         state: {
           targetUserId: otherUser.uid,
           otherUserName: otherUser.name || 'User',

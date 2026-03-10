@@ -80,6 +80,10 @@ export default function MeetingRoom() {
     }, [navigate, targetUserId]);
 
     const createCallerPeer = useCallback((stream) => {
+        if (connectionRef.current) {
+            try { connectionRef.current.destroy(); } catch (e) { }
+            connectionRef.current = null;
+        }
         const peer = new Peer({ initiator: true, trickle: true, stream, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
         peer.on('signal', (data) => callService.sendSignal(targetUserId, currentUser.uid, data));
         peer.on('stream', (remoteStream) => {
@@ -93,6 +97,10 @@ export default function MeetingRoom() {
     }, [targetUserId, currentUser, otherUserName, leaveCall]);
 
     const createReceiverPeer = useCallback((stream, offerSignal) => {
+        if (connectionRef.current) {
+            try { connectionRef.current.destroy(); } catch (e) { }
+            connectionRef.current = null;
+        }
         const peer = new Peer({ initiator: false, trickle: true, stream, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
         peer.on('signal', (data) => callService.sendSignal(targetUserId, currentUser.uid, data));
         peer.on('stream', (remoteStream) => {
@@ -132,7 +140,7 @@ export default function MeetingRoom() {
 
             if (data.signal.type === 'ready') {
                 if (isCaller) {
-                    if (streamRef.current && !connectionRef.current) {
+                    if (streamRef.current) {
                         createCallerPeer(streamRef.current);
                     } else {
                         pendingOfferRef.current = { type: 'ready' };
