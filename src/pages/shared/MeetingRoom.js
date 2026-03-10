@@ -8,6 +8,9 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import Peer from 'simple-peer';
 import callService from '../../services/callService';
+import * as bodySegmentation from '@tensorflow-models/body-segmentation';
+import * as tf from '@tensorflow/tfjs-core';
+import '@tensorflow/tfjs-backend-webgl';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -28,6 +31,10 @@ export default function MeetingRoom() {
     const mainContainerRef = useRef(null);
     const pendingOfferRef = useRef(null);
     const screenStreamRef = useRef(null);
+    // Real blur support
+    const canvasRef = useRef(null);
+    const segmenterRef = useRef(null);
+    const animationFrameRef = useRef(null);
 
     const [callAccepted, setCallAccepted] = useState(false);
     const [micMuted, setMicMuted] = useState(false);
@@ -60,6 +67,7 @@ export default function MeetingRoom() {
             streamRef.current.getTracks().forEach(t => t.stop());
             streamRef.current = null;
         }
+        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
 
     const leaveCall = useCallback(() => {
@@ -100,6 +108,18 @@ export default function MeetingRoom() {
 
     useEffect(() => {
         if (!targetUserId || !currentUser?.uid) return;
+
+        // Initialize body segmenter
+        const initSegmenter = async () => {
+            try {
+                await tf.setBackend('webgl');
+                const model = bodySegmentation.SupportedModels.MediaPipeSelfieSegmentation;
+                const segmenterConfig = { runtime: 'tfjs', modelType: 'general' };
+                segmenterRef.current = await bodySegmentation.createSegmenter(model, segmenterConfig);
+            } catch (err) { console.error("Segmenter init error:", err); }
+        };
+        initSegmenter();
+
         navigator.mediaDevices.getUserMedia({ video: true, audio: true })
             .then((stream) => {
                 streamRef.current = stream;
@@ -225,7 +245,61 @@ export default function MeetingRoom() {
         }
     };
 
-    // ── Background Blur ──
+    // ── Real Background Blur ──
+    const applyBlurEffect = async () => {
+        if (!myVideo.current || !canvasRef.current || !segmenterRef.current || camOff || !bgBlur) return;
+
+        const video = myVideo.current;
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+
+        if (video.readyState < 2) {
+            animationFrameRef.current = requestAnimationFrame(applyBlurEffect);
+            return;
+        }
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        try {
+            const segmentation = await segmenterRef.current.segmentPeople(video);
+
+            // Draw original video to canvas
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Draw blur layer
+            const blurAmount = 10;
+            ctx.globalCompositeOperation = 'destination-out';
+
+            // Create a mask from segmentation map
+            const maskImage = await bodySegmentation.toBinaryMask(segmentation);
+            bodySegmentation.drawMask(
+                canvas, canvas, maskImage, 1.0, 0, true
+            );
+
+            // Add back the person on top of the blurred background
+            ctx.globalCompositeOperation = 'destination-over';
+            ctx.filter = `blur(${blurAmount}px)`;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            ctx.filter = 'none';
+
+        } catch (error) {
+            console.error("Blur Error", error);
+        }
+
+        if (bgBlur) {
+            animationFrameRef.current = requestAnimationFrame(applyBlurEffect);
+        }
+    };
+
+    useEffect(() => {
+        if (bgBlur && !camOff) {
+            applyBlurEffect();
+        } else if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+        }
+    }, [bgBlur, camOff]);
+
     const toggleBgBlur = () => {
         const newValue = !bgBlur;
         setBgBlur(newValue);
@@ -333,7 +407,8 @@ export default function MeetingRoom() {
 
                     {/* Local PIP */}
                     <div style={{ position: 'absolute', bottom: 90, right: 20, width: 160, aspectRatio: '4/3', borderRadius: 14, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.15)', boxShadow: '0 8px 24px rgba(0,0,0,0.6)', background: '#111', zIndex: 20 }}>
-                        <video playsInline muted ref={myVideo} autoPlay style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: camOff ? 'none' : 'block', filter: bgBlur ? 'blur(8px)' : 'none' }} />
+                        <video playsInline muted ref={myVideo} autoPlay style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: camOff ? 'none' : (bgBlur ? 'none' : 'block') }} />
+                        <canvas ref={canvasRef} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: (bgBlur && !camOff) ? 'block' : 'none' }} />
                         {camOff && (<div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.silver, flexDirection: 'column', gap: 6, fontSize: 12 }}><CameraOff size={20} /><span>Camera off</span></div>)}
                     </div>
                 </div>
@@ -414,16 +489,16 @@ export default function MeetingRoom() {
                 <Ctrl onClick={toggleHandRaise} label="Raise Hand" bg={handRaised ? '#f59e0b' : 'rgba(255,255,255,0.12)'}>
                     <Hand size={20} color="#fff" />
                 </Ctrl>
-                <Ctrl onClick={() => { setShowAiPanel(p => !p); setShowChat(false); }} label="AI Questions" bg={showAiPanel ? '#1a6fe8' : 'rgba(255,255,255,0.12)'}>
+                <Ctrl onClick={(e) => { e.stopPropagation(); setShowAiPanel(p => !p); setShowChat(false); }} label="AI Questions" bg={showAiPanel ? '#1a6fe8' : 'rgba(255,255,255,0.12)'}>
                     <Sparkles size={20} color="#fff" />
                 </Ctrl>
-                <Ctrl onClick={() => { setShowChat(p => !p); setShowAiPanel(false); }} label="Chat" bg={showChat ? '#1a6fe8' : 'rgba(255,255,255,0.12)'}>
+                <Ctrl onClick={(e) => { e.stopPropagation(); setShowChat(p => !p); setShowAiPanel(false); }} label="Chat" bg={showChat ? '#1a6fe8' : 'rgba(255,255,255,0.12)'}>
                     <MessageSquare size={20} color="#fff" />
                 </Ctrl>
-                <Ctrl onClick={() => setShowInvite(true)} label="Invite / Add">
+                <Ctrl onClick={(e) => { e.stopPropagation(); setShowInvite(true); }} label="Invite / Add">
                     <UserPlus size={20} color="#fff" />
                 </Ctrl>
-                <Ctrl onClick={() => setShowReport(true)} label="Report Problem">
+                <Ctrl onClick={(e) => { e.stopPropagation(); setShowReport(true); }} label="Report Problem">
                     <AlertCircle size={20} color="#fff" />
                 </Ctrl>
                 {/* End + Fullscreen */}

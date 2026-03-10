@@ -81,11 +81,15 @@ export default function DocumentVault() {
 
         setUploading(true);
         try {
-            await uploadCandidateDocument(file, currentUser.uid, {
-                docCategory,
-                visibility,
-                expiryDate: expiryDate ? new Date(expiryDate).toISOString() : null,
-            });
+            const metadata = {
+                docCategory: docCategory || "Other",
+                visibility: visibility || "private"
+            };
+            if (expiryDate) {
+                metadata.expiryDate = new Date(expiryDate).toISOString();
+            }
+
+            await uploadCandidateDocument(file, currentUser.uid, metadata);
             setFile(null);
             setExpiryDate("");
             await loadDocuments(); // Refresh list

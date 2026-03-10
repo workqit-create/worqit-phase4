@@ -99,6 +99,7 @@ export async function getPendingRequests(uid) {
 }
 
 // ── GET ALL CANDIDATES (for discovery — exclude self) ──
+// ── GET ALL CANDIDATES (for discovery — exclude self) ──
 export async function getAllCandidates(excludeUid) {
   const snap = await getDocs(collection(db, "users"));
   return snap.docs
