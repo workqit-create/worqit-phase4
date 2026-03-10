@@ -8,11 +8,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import Peer from 'simple-peer';
 import callService from '../../services/callService';
-import * as bodySegmentation from '@tensorflow-models/body-segmentation';
-import * as tf from '@tensorflow/tfjs-core';
-import '@tensorflow/tfjs-backend-webgl';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 export default function MeetingRoom() {
     const { id } = useParams();
@@ -20,467 +17,449 @@ export default function MeetingRoom() {
     const navigate = useNavigate();
     const { currentUser } = useAuth();
 
-    const targetUserId = new URLSearchParams(location.search).get('host') || location.state?.targetUserId || '';
+    // ── All call params from router state ──────────────────────────────
+    const targetUserId = location.state?.targetUserId || new URLSearchParams(location.search).get('host') || '';
     const otherUserName = location.state?.otherUserName || 'Guest';
     const isCaller = location.state?.isCaller ?? false;
 
-    const streamRef = useRef(null);
-    const connectionRef = useRef(null);
+    // ── All refs — never change, never re-render ───────────────────────
     const myVideo = useRef(null);
     const userVideo = useRef(null);
-    const mainContainerRef = useRef(null);
-    const pendingOfferRef = useRef(null);
-    const screenStreamRef = useRef(null);
-    // Real blur support
+    const mainRef = useRef(null);
+    const streamRef = useRef(null);
+    const peerRef = useRef(null);
+    const pendingRef = useRef(null);  // buffered offer/ICE from callee side
+    const readySentRef = useRef(false); // prevent duplicate ready signals
     const canvasRef = useRef(null);
-    const segmenterRef = useRef(null);
-    const animationFrameRef = useRef(null);
+    const animFrameRef = useRef(null);
 
-    const [callAccepted, setCallAccepted] = useState(false);
+    // ── UI state ───────────────────────────────────────────────────────
+    const [connected, setConnected] = useState(false);
+    const [status, setStatus] = useState(isCaller ? 'Calling…' : 'Waiting for caller…');
     const [micMuted, setMicMuted] = useState(false);
     const [camOff, setCamOff] = useState(false);
     const [isFullScreen, setIsFullScreen] = useState(false);
-    const [status, setStatus] = useState(isCaller ? 'Calling...' : 'Waiting to connect...');
-    // New UAT states
     const [isSharingScreen, setIsSharingScreen] = useState(false);
     const [bgBlur, setBgBlur] = useState(false);
     const [handRaised, setHandRaised] = useState(false);
+    const [remoteBlur, setRemoteBlur] = useState(false);
+    const [remoteHand, setRemoteHand] = useState(false);
     const [showChat, setShowChat] = useState(false);
-    const showChatRef = useRef(false);
-    useEffect(() => { showChatRef.current = showChat; }, [showChat]);
-
-    const [chatMessages, setChatMessages] = useState([]);
+    const [chatMsgs, setChatMsgs] = useState([]);
     const [chatInput, setChatInput] = useState('');
-    const [remoteBgBlur, setRemoteBgBlur] = useState(false);
-    const [remoteHandRaised, setRemoteHandRaised] = useState(false);
-    const [showAiPanel, setShowAiPanel] = useState(false);
+    const [showAi, setShowAi] = useState(false);
     const [aiPrompt, setAiPrompt] = useState('');
-    const [aiQuestions, setAiQuestions] = useState('');
+    const [aiResult, setAiResult] = useState('');
     const [aiLoading, setAiLoading] = useState(false);
+    const [showInvite, setShowInvite] = useState(false);
     const [showReport, setShowReport] = useState(false);
     const [reportText, setReportText] = useState('');
     const [reportSent, setReportSent] = useState(false);
-    const [showInvite, setShowInvite] = useState(false);
     const [toast, setToast] = useState('');
 
-    const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+    const showToast = useCallback((msg) => {
+        setToast(msg);
+        setTimeout(() => setToast(''), 3500);
+    }, []);
 
-    const stopAllTracks = () => {
+    // ── Helpers ────────────────────────────────────────────────────────
+    const stopStream = useCallback(() => {
         if (streamRef.current) {
             streamRef.current.getTracks().forEach(t => t.stop());
             streamRef.current = null;
         }
-        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-    };
+        if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    }, []);
 
-    const leaveCall = useCallback(() => {
-        if (targetUserId) {
-            callService.endCall(targetUserId);
+    const destroyPeer = useCallback(() => {
+        if (peerRef.current) {
+            try { peerRef.current.destroy(); } catch (_) { }
+            peerRef.current = null;
         }
-        if (connectionRef.current) { connectionRef.current.destroy(); connectionRef.current = null; }
-        stopAllTracks();
+    }, []);
+
+    const doLeave = useCallback(() => {
+        if (targetUserId) callService.endCall(targetUserId);
+        destroyPeer();
+        stopStream();
         navigate(-1);
-    }, [navigate, targetUserId]);
+    }, [targetUserId, destroyPeer, stopStream, navigate]);
 
-    const createCallerPeer = useCallback((stream) => {
-        if (connectionRef.current) {
-            try { connectionRef.current.destroy(); } catch (e) { }
-            connectionRef.current = null;
-        }
-        const peer = new Peer({ initiator: true, trickle: true, stream, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
-        peer.on('signal', (data) => callService.sendSignal(targetUserId, currentUser?.uid, data));
-        peer.on('stream', (remoteStream) => {
-            setCallAccepted(true);
-            setStatus(`Connected with ${otherUserName}`);
-            if (userVideo.current) userVideo.current.srcObject = remoteStream;
+    // ── Build Caller peer (initiator = true) ───────────────────────────
+    const buildCallerPeer = useCallback((stream) => {
+        destroyPeer();
+        const p = new Peer({
+            initiator: true,
+            trickle: true,
+            stream,
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                ]
+            }
         });
-        peer.on('close', leaveCall);
-        peer.on('error', () => leaveCall());
-        connectionRef.current = peer;
-    }, [targetUserId, currentUser?.uid, otherUserName, leaveCall]);
-
-    const createReceiverPeer = useCallback((stream, offerSignal) => {
-        if (connectionRef.current) {
-            try { connectionRef.current.destroy(); } catch (e) { }
-            connectionRef.current = null;
-        }
-        const peer = new Peer({ initiator: false, trickle: true, stream, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
-        peer.on('signal', (data) => callService.sendSignal(targetUserId, currentUser?.uid, data));
-        peer.on('stream', (remoteStream) => {
-            setCallAccepted(true);
-            setStatus(`Connected with ${otherUserName}`);
-            if (userVideo.current) userVideo.current.srcObject = remoteStream;
+        p.on('signal', data => {
+            callService.sendSignal(targetUserId, currentUser.uid, data);
         });
-        peer.on('close', leaveCall);
-        peer.on('error', () => leaveCall());
-        peer.signal(offerSignal);
-        connectionRef.current = peer;
-    }, [targetUserId, currentUser?.uid, otherUserName, leaveCall]);
+        p.on('stream', remote => {
+            if (userVideo.current) userVideo.current.srcObject = remote;
+            setConnected(true);
+            setStatus('Connected ✓');
+        });
+        p.on('close', () => { setConnected(false); setStatus('Call ended'); });
+        p.on('error', err => { console.error('Peer error', err); });
+        peerRef.current = p;
+    }, [targetUserId, currentUser, destroyPeer]);
 
+    // ── Build Receiver peer (initiator = false) ────────────────────────
+    const buildReceiverPeer = useCallback((stream, offerSignal) => {
+        destroyPeer();
+        const p = new Peer({
+            initiator: false,
+            trickle: true,
+            stream,
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                ]
+            }
+        });
+        p.on('signal', data => {
+            callService.sendSignal(targetUserId, currentUser.uid, data);
+        });
+        p.on('stream', remote => {
+            if (userVideo.current) userVideo.current.srcObject = remote;
+            setConnected(true);
+            setStatus('Connected ✓');
+        });
+        p.on('close', () => { setConnected(false); setStatus('Call ended'); });
+        p.on('error', err => { console.error('Peer error', err); });
+        p.signal(offerSignal);
+        peerRef.current = p;
+    }, [targetUserId, currentUser, destroyPeer]);
+
+    // ╔══════════════════════════════════════════════════════════════╗
+    // ║  MAIN EFFECT — runs ONCE on mount only                       ║
+    // ║  DO NOT add more deps — stable refs mean we never need to    ║
+    // ╚══════════════════════════════════════════════════════════════╝
     useEffect(() => {
         if (!targetUserId || !currentUser?.uid) return;
 
-        // Initialize body segmenter
-        const initSegmenter = async () => {
-            try {
-                await tf.setBackend('webgl');
-                const model = bodySegmentation.SupportedModels.MediaPipeSelfieSegmentation;
-                const segmenterConfig = { runtime: 'tfjs', modelType: 'general' };
-                segmenterRef.current = await bodySegmentation.createSegmenter(model, segmenterConfig);
-            } catch (err) { console.error("Segmenter init error:", err); }
-        };
-        initSegmenter();
+        // ── Capture stable values in closure ──────────────────────────
+        const myUid = currentUser.uid;
+        const theirUid = targetUserId;
+        const amCaller = isCaller;
 
-        const handleSignal = (data) => {
-            if (data.fromUserId !== targetUserId) return;
+        // ── Signal handler ────────────────────────────────────────────
+        const onSignal = (data) => {
+            if (data.fromUserId !== theirUid) return;
+            const sig = data.signal;
 
-            if (data.signal.type === 'ready-check') {
-                if (!isCaller && streamRef.current) {
-                    callService.sendSignal(targetUserId, currentUser.uid, { type: 'ready' });
+            // ── Receiver: Caller says "are you ready?" ─────────────────
+            if (sig.type === 'ready-check') {
+                if (!amCaller && streamRef.current && !readySentRef.current) {
+                    readySentRef.current = true;
+                    callService.sendSignal(theirUid, myUid, { type: 'ready' });
                 }
                 return;
             }
 
-            if (data.signal.type === 'ready') {
-                if (isCaller) {
+            // ── Caller: Receiver is ready, now build peer ──────────────
+            if (sig.type === 'ready') {
+                if (amCaller) {
                     if (streamRef.current) {
-                        createCallerPeer(streamRef.current);
+                        buildCallerPeer(streamRef.current);
                     } else {
-                        pendingOfferRef.current = { type: 'ready' };
+                        pendingRef.current = { waitingForStream: true };
                     }
                 }
                 return;
             }
 
-            if (isCaller) {
-                if (connectionRef.current && !connectionRef.current.destroyed) connectionRef.current.signal(data.signal);
-            } else {
-                if (data.signal.type === 'offer') {
-                    if (streamRef.current) createReceiverPeer(streamRef.current, data.signal);
-                    else pendingOfferRef.current = data.signal;
+            // ── Receiver: got WebRTC offer ─────────────────────────────
+            if (!amCaller && sig.type === 'offer') {
+                if (streamRef.current) {
+                    buildReceiverPeer(streamRef.current, sig);
                 } else {
-                    if (connectionRef.current && !connectionRef.current.destroyed) connectionRef.current.signal(data.signal);
+                    pendingRef.current = sig;
                 }
+                return;
+            }
+
+            // ── Both: ICE candidates / answers ────────────────────────
+            if (peerRef.current && !peerRef.current.destroyed) {
+                try { peerRef.current.signal(sig); } catch (_) { }
             }
         };
 
-        callService.listenForSignals(handleSignal);
+        // ── Call ended by other side ──────────────────────────────────
+        const onCallEnded = () => {
+            showToast('Call ended by the other person.');
+            destroyPeer();
+            stopStream();
+            navigate(-1);
+        };
 
+        // ── Control events (blur, hand) ───────────────────────────────
+        const onControl = (data) => {
+            if (!data) return;
+            if (data.type === 'bgBlur') setRemoteBlur(data.value);
+            if (data.type === 'handRaised') {
+                setRemoteHand(data.value);
+                if (data.value) showToast(`${otherUserName} raised their hand ✋`);
+            }
+        };
+
+        // ── In-call chat ──────────────────────────────────────────────
+        const onChat = (data) => {
+            setChatMsgs(prev => [...prev, {
+                from: data.fromUserName,
+                text: data.message,
+                time: data.time
+            }]);
+            showToast(`💬 ${data.fromUserName}: ${data.message}`);
+        };
+
+        // ── Register listeners ────────────────────────────────────────
+        callService.listenForSignals(onSignal);
+        callService.on('call-ended', onCallEnded);
+        callService.listenForControlEvents(onControl);
+        callService.listenForChatMessages(onChat);
+
+        // ── Get camera & mic ─────────────────────────────────────────
         navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            .then((stream) => {
+            .then(stream => {
                 streamRef.current = stream;
                 if (myVideo.current) myVideo.current.srcObject = stream;
 
-                if (isCaller) {
-                    if (pendingOfferRef.current?.type === 'ready') {
-                        createCallerPeer(stream);
-                        pendingOfferRef.current = null;
-                    } else {
-                        callService.sendSignal(targetUserId, currentUser.uid, { type: 'ready-check' });
-                    }
+                if (amCaller) {
+                    // Send ready-check to see if receiver is already waiting
+                    callService.sendSignal(theirUid, myUid, { type: 'ready-check' });
                 } else {
-                    if (pendingOfferRef.current && pendingOfferRef.current.type === 'offer') {
-                        createReceiverPeer(stream, pendingOfferRef.current);
-                        pendingOfferRef.current = null;
-                    } else {
-                        callService.sendSignal(targetUserId, currentUser.uid, { type: 'ready' });
+                    // Receiver: check if offer arrived before camera was ready
+                    if (pendingRef.current && pendingRef.current.type === 'offer') {
+                        const buffered = pendingRef.current;
+                        pendingRef.current = null;
+                        buildReceiverPeer(stream, buffered);
+                    } else if (!readySentRef.current) {
+                        // Send ready so caller can build peer
+                        readySentRef.current = true;
+                        callService.sendSignal(theirUid, myUid, { type: 'ready' });
                     }
                 }
             })
-            .catch(() => { alert('Camera/microphone permission denied.'); navigate(-1); });
+            .catch(() => {
+                alert('Camera or microphone access was denied. Please allow access and try again.');
+                navigate(-1);
+            });
 
-        const handleCallEnded = () => {
-            showToast('The other person ended the call.');
-            leaveCall();
-        };
-
-        const handleControlEvent = (data) => {
-            if (data.type === 'bgBlur') setRemoteBgBlur(data.value);
-            if (data.type === 'handRaised') {
-                setRemoteHandRaised(data.value);
-                if (data.value) showToast(`${otherUserName} raised their hand`);
-            }
-        };
-
-        const handleChatMessage = (data) => {
-            setChatMessages(prev => [...prev, { from: data.fromUserName, text: data.message, time: data.time }]);
-            if (!showChatRef.current) showToast(`New message from ${data.fromUserName}`);
-        };
-
-        callService.listenForSignals(handleSignal);
-        callService.on('call-ended', handleCallEnded);
-        callService.listenForControlEvents(handleControlEvent);
-        callService.listenForChatMessages(handleChatMessage);
-
+        // ── Cleanup on unmount ────────────────────────────────────────
         return () => {
-            callService.stopListeningForSignals(handleSignal);
+            callService.stopListeningForSignals(onSignal);
             callService.off('call-ended');
-            callService.stopListeningForControlEvents(handleControlEvent);
-            callService.stopListeningForChatMessages(handleChatMessage);
-            if (connectionRef.current) { connectionRef.current.destroy(); connectionRef.current = null; }
-            stopAllTracks();
+            callService.stopListeningForControlEvents(onControl);
+            callService.stopListeningForChatMessages(onChat);
+            destroyPeer();
+            stopStream();
         };
         // eslint-disable-next-line
-    }, [targetUserId, currentUser?.uid, isCaller]);
+    }, []); // ← EMPTY deps: runs once, uses closure & refs
 
+
+    // ── Mic toggle ────────────────────────────────────────────────────
     const toggleMic = () => {
         if (!streamRef.current) return;
         const track = streamRef.current.getAudioTracks()[0];
         if (track) { track.enabled = !track.enabled; setMicMuted(!track.enabled); }
     };
 
-    const toggleVideo = () => {
+    // ── Camera toggle ─────────────────────────────────────────────────
+    const toggleCam = () => {
         if (!streamRef.current) return;
         const track = streamRef.current.getVideoTracks()[0];
         if (track) { track.enabled = !track.enabled; setCamOff(!track.enabled); }
     };
 
+    // ── Full screen ───────────────────────────────────────────────────
     const toggleFullScreen = () => {
-        if (!document.fullscreenElement) mainContainerRef.current?.requestFullscreen().catch(console.error);
+        if (!document.fullscreenElement) mainRef.current?.requestFullscreen().catch(() => { });
         else document.exitFullscreen();
     };
 
     useEffect(() => {
-        const onChange = () => setIsFullScreen(!!document.fullscreenElement);
-        document.addEventListener('fullscreenchange', onChange);
-        return () => document.removeEventListener('fullscreenchange', onChange);
+        const fn = () => setIsFullScreen(!!document.fullscreenElement);
+        document.addEventListener('fullscreenchange', fn);
+        return () => document.removeEventListener('fullscreenchange', fn);
     }, []);
 
-    // ── Screen Share ──
+    // ── Screen share ──────────────────────────────────────────────────
     const toggleScreenShare = async () => {
         if (isSharingScreen) {
-            screenStreamRef.current?.getTracks().forEach(t => t.stop());
-            screenStreamRef.current = null;
             setIsSharingScreen(false);
-            const camTrack = streamRef.current?.getVideoTracks()[0];
-            if (camTrack && connectionRef.current && !connectionRef.current.destroyed) {
-                const sender = connectionRef.current._pc?.getSenders().find(s => s.track?.kind === 'video');
-                if (sender) sender.replaceTrack(camTrack);
-            }
             if (myVideo.current) myVideo.current.srcObject = streamRef.current;
+            const cam = streamRef.current?.getVideoTracks()[0];
+            if (cam && peerRef.current && !peerRef.current.destroyed) {
+                const s = peerRef.current._pc?.getSenders().find(s => s.track?.kind === 'video');
+                if (s) s.replaceTrack(cam);
+            }
             showToast('Screen sharing stopped.');
         } else {
             try {
-                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                screenStreamRef.current = screenStream;
-                const screenTrack = screenStream.getVideoTracks()[0];
-                if (connectionRef.current && !connectionRef.current.destroyed) {
-                    const sender = connectionRef.current._pc?.getSenders().find(s => s.track?.kind === 'video');
-                    if (sender) sender.replaceTrack(screenTrack);
+                const ss = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                const track = ss.getVideoTracks()[0];
+                if (peerRef.current && !peerRef.current.destroyed) {
+                    const s = peerRef.current._pc?.getSenders().find(s => s.track?.kind === 'video');
+                    if (s) s.replaceTrack(track);
                 }
-                screenTrack.onended = () => {
+                if (myVideo.current) myVideo.current.srcObject = ss;
+                track.onended = () => {
                     setIsSharingScreen(false);
                     if (myVideo.current) myVideo.current.srcObject = streamRef.current;
-                    const camTrack = streamRef.current?.getVideoTracks()[0];
-                    if (camTrack && connectionRef.current && !connectionRef.current.destroyed) {
-                        const sender = connectionRef.current._pc?.getSenders().find(s => s.track?.kind === 'video');
-                        if (sender) sender.replaceTrack(camTrack);
+                    const cam = streamRef.current?.getVideoTracks()[0];
+                    if (cam && peerRef.current && !peerRef.current.destroyed) {
+                        const s = peerRef.current._pc?.getSenders().find(s => s.track?.kind === 'video');
+                        if (s) s.replaceTrack(cam);
                     }
-                    showToast('Screen sharing stopped.');
                 };
-                if (myVideo.current) myVideo.current.srcObject = screenStream;
                 setIsSharingScreen(true);
                 showToast('Screen sharing started.');
             } catch { showToast('Screen sharing cancelled.'); }
         }
     };
 
-    // ── Real Background Blur ──
-    const applyBlurEffect = async () => {
-        if (!myVideo.current || !canvasRef.current || !segmenterRef.current || camOff || !bgBlur) return;
-
-        const video = myVideo.current;
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-
-        if (video.readyState < 2) {
-            animationFrameRef.current = requestAnimationFrame(applyBlurEffect);
-            return;
-        }
-
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-
-        try {
-            const segmentation = await segmenterRef.current.segmentPeople(video);
-
-            // Draw original video to canvas
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            // Draw blur layer
-            const blurAmount = 10;
-            ctx.globalCompositeOperation = 'destination-out';
-
-            // Create a mask from segmentation map
-            const maskImage = await bodySegmentation.toBinaryMask(segmentation);
-            bodySegmentation.drawMask(
-                canvas, canvas, maskImage, 1.0, 0, true
-            );
-
-            // Add back the person on top of the blurred background
-            ctx.globalCompositeOperation = 'destination-over';
-            ctx.filter = `blur(${blurAmount}px)`;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            ctx.filter = 'none';
-
-        } catch (error) {
-            console.error("Blur Error", error);
-        }
-
-        if (bgBlur) {
-            animationFrameRef.current = requestAnimationFrame(applyBlurEffect);
-        }
-    };
-
+    // ── Background blur (CSS — simple, no TF dependency issues) ───────
     useEffect(() => {
-        if (bgBlur && !camOff) {
-            applyBlurEffect();
-        } else if (animationFrameRef.current) {
-            cancelAnimationFrame(animationFrameRef.current);
-        }
-    }, [bgBlur, camOff]);
+        if (!myVideo.current) return;
+        myVideo.current.style.filter = bgBlur ? 'blur(10px)' : 'none';
+    }, [bgBlur]);
 
     const toggleBgBlur = () => {
-        const newValue = !bgBlur;
-        setBgBlur(newValue);
-        callService.sendControlEvent(targetUserId, { type: 'bgBlur', value: newValue });
+        const v = !bgBlur;
+        setBgBlur(v);
+        callService.sendControlEvent(targetUserId, { type: 'bgBlur', value: v });
     };
 
-    // ── Raise Hand ──
-    const toggleHandRaise = () => {
-        const newValue = !handRaised;
-        setHandRaised(newValue);
-        showToast(newValue ? 'Hand raised! ✋' : 'Hand lowered.');
-        callService.sendControlEvent(targetUserId, { type: 'handRaised', value: newValue });
+    // ── Raise hand ────────────────────────────────────────────────────
+    const toggleHand = () => {
+        const v = !handRaised;
+        setHandRaised(v);
+        showToast(v ? '✋ Hand raised!' : 'Hand lowered.');
+        callService.sendControlEvent(targetUserId, { type: 'handRaised', value: v });
     };
 
-    // ── AI Questions ──
-    const generateAIQuestions = async () => {
+    // ── AI Questions ──────────────────────────────────────────────────
+    const generateAI = async () => {
         if (!aiPrompt.trim()) return;
         setAiLoading(true);
-        setAiQuestions('');
+        setAiResult('');
         try {
             const res = await fetch(`${API_URL}/api/generate-interview-questions`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt: aiPrompt }),
             });
-            if (res.ok) {
-                const data = await res.json();
-                setAiQuestions(data.questions || 'No questions generated.');
-            } else {
-                setAiQuestions('Failed to generate. Please try again.');
-            }
+            const data = await res.json();
+            setAiResult(data.questions || 'No questions generated.');
         } catch {
-            setAiQuestions('Network error. Make sure the backend is running.');
+            setAiResult('Network error. Make sure the backend is reachable.');
         }
         setAiLoading(false);
     };
 
-    // ── In-call chat (local only — no signaling in this pass) ──
-    const sendChatMessage = () => {
+    // ── In-call chat ──────────────────────────────────────────────────
+    const sendChat = () => {
         if (!chatInput.trim()) return;
-        const msg = chatInput;
-        setChatMessages(prev => [...prev, { from: 'You', text: msg, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
+        const msg = chatInput.trim();
+        setChatMsgs(prev => [...prev, { from: 'You', text: msg, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }]);
         setChatInput('');
-        callService.sendChatMessage(targetUserId, currentUser?.name || currentUser?.displayName || 'Guest', msg);
+        callService.sendChatMessage(targetUserId, currentUser?.displayName || currentUser?.name || 'You', msg);
     };
 
-    // ── Copy invite link ──
-    const copyInviteLink = () => {
-        const linkUrl = new URL(window.location.href);
-        if (!linkUrl.searchParams.has('host')) {
-            linkUrl.searchParams.set('host', currentUser.uid);
-        }
-        const link = linkUrl.toString();
-        navigator.clipboard.writeText(link).then(() => showToast('Invite link copied!')).catch(() => showToast('Could not copy link.'));
+    // ── Invite link ───────────────────────────────────────────────────
+    const copyInvite = () => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('host', currentUser.uid);
+        navigator.clipboard.writeText(url.toString()).then(() => showToast('Invite link copied!')).catch(() => showToast('Could not copy link.'));
         setShowInvite(false);
     };
 
+    // ── Guard: no targetUserId ────────────────────────────────────────
     if (!targetUserId) {
         return (
             <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#040914', color: '#fff', fontFamily: C.font, gap: 16 }}>
                 <div style={{ fontSize: 48 }}>📞</div>
                 <h3>Invalid Call Link</h3>
-                <p style={{ color: C.silver, maxWidth: 320, textAlign: 'center' }}>This happens when you refresh the page. Please start or accept the call again.</p>
+                <p style={{ color: C.silver, maxWidth: 320, textAlign: 'center' }}>Please start or accept the call again from the chat.</p>
                 <button onClick={() => navigate(-1)} style={{ padding: '12px 28px', borderRadius: 30, background: C.grad, border: 'none', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>Go Back</button>
             </div>
         );
     }
 
     return (
-        <div ref={mainContainerRef} style={{ height: '100vh', width: '100%', background: '#040914', display: 'flex', flexDirection: 'column', fontFamily: C.font, position: 'relative', overflow: 'hidden' }}>
+        <div ref={mainRef} style={{ height: '100vh', width: '100%', background: '#040914', display: 'flex', flexDirection: 'column', fontFamily: C.font, position: 'relative', overflow: 'hidden' }}>
 
             {/* Toast */}
             {toast && (
-                <div style={{ position: 'absolute', top: 72, left: '50%', transform: 'translateX(-50%)', background: 'rgba(26,111,232,.9)', color: '#fff', padding: '10px 22px', borderRadius: 30, fontSize: 13, fontWeight: 600, zIndex: 999, backdropFilter: 'blur(8px)' }}>
+                <div style={{ position: 'absolute', top: 72, left: '50%', transform: 'translateX(-50%)', background: 'rgba(26,111,232,.92)', color: '#fff', padding: '10px 22px', borderRadius: 30, fontSize: 13, fontWeight: 600, zIndex: 9999, backdropFilter: 'blur(8px)', whiteSpace: 'nowrap' }}>
                     {toast}
                 </div>
             )}
 
-            {/* ── Header ── */}
+            {/* Header */}
             {!isFullScreen && (
                 <div style={{ padding: '14px 24px', background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.08)', zIndex: 10, backdropFilter: 'blur(8px)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: callAccepted ? '#34c759' : '#ff9f0a', boxShadow: callAccepted ? '0 0 8px #34c759' : '0 0 8px #ff9f0a' }} />
+                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: connected ? '#34c759' : '#ff9f0a', boxShadow: connected ? '0 0 8px #34c759' : '0 0 8px #ff9f0a' }} />
                         <span style={{ color: '#fff', fontWeight: 600, fontSize: 15 }}>Worqit Video Call</span>
-                        {remoteHandRaised && <span style={{ fontSize: 18, animation: 'wave 0.8s ease infinite alternate' }} title={`${otherUserName} raised their hand`}>✋</span>}
+                        {remoteHand && <span style={{ fontSize: 18 }} title={`${otherUserName} raised their hand`}>✋</span>}
                     </div>
                     <span style={{ color: C.silver, fontSize: 13 }}>{status}</span>
                 </div>
             )}
 
-            {/* ── Main Area ── */}
+            {/* Main area */}
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-                {/* Video area */}
+                {/* Video */}
                 <div style={{ flex: 1, position: 'relative', background: '#000', overflow: 'hidden' }}>
-                    <video playsInline ref={userVideo} autoPlay style={{ width: '100%', height: '100%', objectFit: 'cover', display: callAccepted ? 'block' : 'none', filter: remoteBgBlur ? 'blur(12px)' : 'none' }} />
-                    {!callAccepted && (
+                    <video playsInline ref={userVideo} autoPlay style={{ width: '100%', height: '100%', objectFit: 'cover', display: connected ? 'block' : 'none', filter: remoteBlur ? 'blur(14px)' : 'none' }} />
+                    {!connected && (
                         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(180deg,#060C1A 0%,#040914 100%)', gap: 20 }}>
                             <div style={{ width: 96, height: 96, borderRadius: '50%', background: C.grad, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38, color: '#fff', fontWeight: 700, animation: 'ringPulse 2s infinite' }}>
                                 {otherUserName.charAt(0).toUpperCase()}
                             </div>
                             <h3 style={{ color: '#fff', margin: 0, fontSize: 22 }}>{otherUserName}</h3>
-                            <p style={{ color: C.silver, margin: 0, fontSize: 14 }}>{isCaller ? '📡 Connecting...' : '⏳ Waiting for caller...'}</p>
+                            <p style={{ color: C.silver, margin: 0, fontSize: 14 }}>{isCaller ? '📡 Connecting…' : '⏳ Waiting for caller…'}</p>
                         </div>
                     )}
-
-                    {/* Local PIP */}
+                    {/* PIP local */}
                     <div style={{ position: 'absolute', bottom: 90, right: 20, width: 160, aspectRatio: '4/3', borderRadius: 14, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.15)', boxShadow: '0 8px 24px rgba(0,0,0,0.6)', background: '#111', zIndex: 20 }}>
-                        <video playsInline muted ref={myVideo} autoPlay style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: camOff ? 'none' : (bgBlur ? 'none' : 'block') }} />
-                        <canvas ref={canvasRef} style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: (bgBlur && !camOff) ? 'block' : 'none' }} />
-                        {camOff && (<div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.silver, flexDirection: 'column', gap: 6, fontSize: 12 }}><CameraOff size={20} /><span>Camera off</span></div>)}
+                        {!camOff
+                            ? <video playsInline muted ref={myVideo} autoPlay style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+                            : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.silver, flexDirection: 'column', gap: 6, fontSize: 12 }}><CameraOff size={20} /><span>Camera off</span></div>
+                        }
                     </div>
                 </div>
 
-                {/* ── AI Questions Panel ── */}
-                {showAiPanel && (
+                {/* AI Panel */}
+                {showAi && (
                     <div style={{ width: 320, background: '#0a0f1e', borderLeft: '1px solid rgba(255,255,255,.08)', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
                         <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ color: '#fff', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}><Sparkles size={16} color={C.cyan} /> AI Question Generator</span>
-                            <button onClick={() => setShowAiPanel(false)} style={{ background: 'none', border: 'none', color: C.silver, cursor: 'pointer' }}><X size={16} /></button>
+                            <span style={{ color: '#fff', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}><Sparkles size={16} color={C.cyan} /> AI Questions</span>
+                            <button onClick={() => setShowAi(false)} style={{ background: 'none', border: 'none', color: C.silver, cursor: 'pointer' }}><X size={16} /></button>
                         </div>
                         <div style={{ padding: 16, flex: 1, display: 'flex', flexDirection: 'column', gap: 12, overflow: 'auto' }}>
-                            <textarea
-                                value={aiPrompt}
-                                onChange={e => setAiPrompt(e.target.value)}
-                                placeholder="e.g. Generate 5 interview questions for a Senior React Developer..."
-                                rows={3}
-                                style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 8, padding: '10px 12px', color: '#fff', resize: 'none', fontFamily: C.font, fontSize: 13 }}
-                            />
-                            <button onClick={generateAIQuestions} disabled={aiLoading} style={{ background: C.blue, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontWeight: 600, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                                {aiLoading ? 'Generating...' : <><Sparkles size={14} /> Generate Questions</>}
+                            <textarea value={aiPrompt} onChange={e => setAiPrompt(e.target.value)} placeholder="e.g. 5 questions for a React Developer…" rows={3} style={{ background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 8, padding: '10px 12px', color: '#fff', resize: 'none', fontFamily: C.font, fontSize: 13 }} />
+                            <button onClick={generateAI} disabled={aiLoading} style={{ background: C.blue, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>
+                                {aiLoading ? 'Generating…' : '✨ Generate'}
                             </button>
-                            {aiQuestions && (
-                                <div style={{ background: 'rgba(255,255,255,.04)', borderRadius: 8, padding: 12, color: C.silver, fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-                                    {aiQuestions}
-                                </div>
-                            )}
+                            {aiResult && <div style={{ background: 'rgba(255,255,255,.04)', borderRadius: 8, padding: 12, color: C.silver, fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{aiResult}</div>}
                         </div>
                     </div>
                 )}
 
-                {/* ── In-call Chat Panel ── */}
+                {/* Chat Panel */}
                 {showChat && (
                     <div style={{ width: 300, background: '#0a0f1e', borderLeft: '1px solid rgba(255,255,255,.08)', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
                         <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -488,8 +467,8 @@ export default function MeetingRoom() {
                             <button onClick={() => setShowChat(false)} style={{ background: 'none', border: 'none', color: C.silver, cursor: 'pointer' }}><X size={16} /></button>
                         </div>
                         <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {chatMessages.length === 0 && <div style={{ color: C.silver, fontSize: 12, textAlign: 'center', marginTop: 40 }}>No messages yet.</div>}
-                            {chatMessages.map((m, i) => (
+                            {chatMsgs.length === 0 && <div style={{ color: C.silver, fontSize: 12, textAlign: 'center', marginTop: 40 }}>No messages yet.</div>}
+                            {chatMsgs.map((m, i) => (
                                 <div key={i} style={{ background: 'rgba(26,111,232,.15)', borderRadius: 10, padding: '8px 12px' }}>
                                     <div style={{ color: C.cyan, fontSize: 11, fontWeight: 700, marginBottom: 2 }}>{m.from} · {m.time}</div>
                                     <div style={{ color: '#fff', fontSize: 13 }}>{m.text}</div>
@@ -497,111 +476,67 @@ export default function MeetingRoom() {
                             ))}
                         </div>
                         <div style={{ padding: 12, borderTop: '1px solid rgba(255,255,255,.08)', display: 'flex', gap: 8 }}>
-                            <input
-                                value={chatInput}
-                                onChange={e => setChatInput(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && sendChatMessage()}
-                                placeholder="Type a message..."
-                                style={{ flex: 1, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 8, padding: '8px 12px', color: '#fff', fontFamily: C.font, outline: 'none', fontSize: 13 }}
-                            />
-                            <button onClick={sendChatMessage} style={{ background: C.blue, color: '#fff', border: 'none', borderRadius: 8, width: 36, height: 36, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                <Send size={16} />
-                            </button>
+                            <input value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendChat()} placeholder="Type a message…" style={{ flex: 1, background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 8, padding: '8px 12px', color: '#fff', fontFamily: C.font, outline: 'none', fontSize: 13 }} />
+                            <button onClick={sendChat} style={{ background: C.blue, color: '#fff', border: 'none', borderRadius: 8, width: 36, height: 36, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Send size={16} /></button>
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* ── Controls Bar ── */}
+            {/* Controls */}
             <div style={{ padding: '16px 24px', background: 'rgba(10,14,28,0.95)', backdropFilter: 'blur(16px)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, borderTop: '1px solid rgba(255,255,255,0.06)', zIndex: 30, flexWrap: 'wrap' }}>
-                <Ctrl onClick={toggleMic} label={micMuted ? 'Unmute' : 'Mute'} bg={micMuted ? '#e53935' : 'rgba(255,255,255,0.12)'}>
-                    {micMuted ? <MicOff size={20} color="#fff" /> : <Mic size={20} color="#fff" />}
-                </Ctrl>
-                <Ctrl onClick={toggleVideo} label={camOff ? 'Camera On' : 'Camera Off'} bg={camOff ? '#e53935' : 'rgba(255,255,255,0.12)'}>
-                    {camOff ? <CameraOff size={20} color="#fff" /> : <Camera size={20} color="#fff" />}
-                </Ctrl>
-                <Ctrl onClick={toggleScreenShare} label="Share Screen" bg={isSharingScreen ? '#1a6fe8' : 'rgba(255,255,255,0.12)'}>
-                    <Monitor size={20} color="#fff" />
-                </Ctrl>
-                <Ctrl onClick={toggleBgBlur} label="Background Blur" bg={bgBlur ? '#1a6fe8' : 'rgba(255,255,255,0.12)'}>
-                    <span style={{ fontSize: 14 }}>🌫</span>
-                </Ctrl>
-                <Ctrl onClick={toggleHandRaise} label="Raise Hand" bg={handRaised ? '#f59e0b' : 'rgba(255,255,255,0.12)'}>
-                    <Hand size={20} color="#fff" />
-                </Ctrl>
-                <Ctrl onClick={(e) => { e.stopPropagation(); setShowAiPanel(p => !p); setShowChat(false); }} label="AI Questions" bg={showAiPanel ? '#1a6fe8' : 'rgba(255,255,255,0.12)'}>
-                    <Sparkles size={20} color="#fff" />
-                </Ctrl>
-                <Ctrl onClick={(e) => { e.stopPropagation(); setShowChat(p => !p); setShowAiPanel(false); }} label="Chat" bg={showChat ? '#1a6fe8' : 'rgba(255,255,255,0.12)'}>
-                    <MessageSquare size={20} color="#fff" />
-                </Ctrl>
-                <Ctrl onClick={(e) => { e.stopPropagation(); setShowInvite(true); }} label="Invite / Add">
-                    <UserPlus size={20} color="#fff" />
-                </Ctrl>
-                <Ctrl onClick={(e) => { e.stopPropagation(); setShowReport(true); }} label="Report Problem">
-                    <AlertCircle size={20} color="#fff" />
-                </Ctrl>
-                {/* End + Fullscreen */}
-                <button onClick={leaveCall} title="End Call" style={{ ...ctrlBtn('#e53935'), width: 64, borderRadius: 32 }}>
+                <Ctrl onClick={toggleMic} label={micMuted ? 'Unmute' : 'Mute'} active={micMuted}>{micMuted ? <MicOff size={20} color="#fff" /> : <Mic size={20} color="#fff" />}</Ctrl>
+                <Ctrl onClick={toggleCam} label={camOff ? 'Camera On' : 'Camera Off'} active={camOff}>{camOff ? <CameraOff size={20} color="#fff" /> : <Camera size={20} color="#fff" />}</Ctrl>
+                <Ctrl onClick={toggleScreenShare} label="Share Screen" active={isSharingScreen}><Monitor size={20} color="#fff" /></Ctrl>
+                <Ctrl onClick={toggleBgBlur} label="Background Blur" active={bgBlur}><span style={{ fontSize: 14 }}>🌫</span></Ctrl>
+                <Ctrl onClick={toggleHand} label="Raise Hand" active={handRaised} activeBg="#f59e0b"><Hand size={20} color="#fff" /></Ctrl>
+                <Ctrl onClick={() => { setShowAi(p => !p); setShowChat(false); }} label="AI Questions" active={showAi}><Sparkles size={20} color="#fff" /></Ctrl>
+                <Ctrl onClick={() => { setShowChat(p => !p); setShowAi(false); }} label="Chat" active={showChat}><MessageSquare size={20} color="#fff" /></Ctrl>
+                <Ctrl onClick={() => setShowInvite(true)} label="Invite / Add"><UserPlus size={20} color="#fff" /></Ctrl>
+                <Ctrl onClick={() => setShowReport(true)} label="Report Problem"><AlertCircle size={20} color="#fff" /></Ctrl>
+                <button onClick={doLeave} title="End Call" style={{ width: 64, height: 52, borderRadius: 32, background: '#e53935', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
                     <PhoneOff size={22} color="#fff" />
                 </button>
-                <Ctrl onClick={toggleFullScreen} label="Full Screen">
-                    {isFullScreen ? <Minimize size={20} color="#fff" /> : <Maximize size={20} color="#fff" />}
-                </Ctrl>
+                <Ctrl onClick={toggleFullScreen} label="Full Screen">{isFullScreen ? <Minimize size={20} color="#fff" /> : <Maximize size={20} color="#fff" />}</Ctrl>
             </div>
 
-            {/* ── Invite Modal ── */}
+            {/* Invite Modal */}
             {showInvite && (
-                <Modal title="Add Participant / Invite" onClose={() => setShowInvite(false)}>
-                    <p style={{ color: C.silver, fontSize: 13, marginBottom: 16 }}>Share this meeting link with others to join:</p>
+                <Modal title="Invite Participant" onClose={() => setShowInvite(false)}>
+                    <p style={{ color: C.silver, fontSize: 13, marginBottom: 16 }}>Share this link to invite someone to this call:</p>
                     <div style={{ background: 'rgba(255,255,255,.06)', borderRadius: 8, padding: '10px 14px', color: C.cyan, fontSize: 12, wordBreak: 'break-all', marginBottom: 16 }}>{window.location.href.includes('?host=') ? window.location.href : `${window.location.href}?host=${currentUser?.uid}`}</div>
-                    <button onClick={copyInviteLink} style={{ background: C.blue, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', width: '100%' }}>
-                        📋 Copy Invite Link
-                    </button>
+                    <button onClick={copyInvite} style={{ background: C.blue, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontWeight: 600, cursor: 'pointer', width: '100%' }}>📋 Copy Invite Link</button>
                 </Modal>
             )}
 
-            {/* ── Report Problem Modal ── */}
+            {/* Report Modal */}
             {showReport && (
                 <Modal title="Report a Problem" onClose={() => { setShowReport(false); setReportSent(false); setReportText(''); }}>
                     {reportSent ? (
                         <div style={{ color: '#00C864', textAlign: 'center', padding: '20px 0' }}>✅ Report submitted. Thank you!</div>
                     ) : (
                         <>
-                            <textarea
-                                value={reportText}
-                                onChange={e => setReportText(e.target.value)}
-                                placeholder="Describe the issue (e.g. video lag, no audio, connection drop)..."
-                                rows={4}
-                                style={{ width: '100%', background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 8, padding: '10px 12px', color: '#fff', resize: 'none', fontFamily: C.font, fontSize: 13, boxSizing: 'border-box', marginBottom: 12 }}
-                            />
-                            <button onClick={() => setReportSent(true)} disabled={!reportText.trim()} style={{ background: C.blue, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontWeight: 600, cursor: 'pointer', width: '100%' }}>
-                                Submit Report
-                            </button>
+                            <textarea value={reportText} onChange={e => setReportText(e.target.value)} placeholder="Describe the issue…" rows={4} style={{ width: '100%', background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 8, padding: '10px 12px', color: '#fff', resize: 'none', fontFamily: C.font, fontSize: 13, boxSizing: 'border-box', marginBottom: 12 }} />
+                            <button onClick={() => setReportSent(true)} disabled={!reportText.trim()} style={{ background: C.blue, color: '#fff', border: 'none', borderRadius: 8, padding: '10px 0', fontWeight: 600, cursor: 'pointer', width: '100%' }}>Submit Report</button>
                         </>
                     )}
                 </Modal>
             )}
 
             <style>{`
-                @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
                 @keyframes ringPulse { 0%,100%{box-shadow:0 0 40px rgba(26,111,232,0.5)}50%{box-shadow:0 0 65px rgba(26,111,232,0.9)} }
-                @keyframes wave { from{transform:rotate(0deg)}to{transform:rotate(20deg)} }
             `}</style>
         </div>
     );
 }
 
-function Ctrl({ onClick, label, bg = 'rgba(255,255,255,0.12)', children }) {
+function Ctrl({ onClick, label, active = false, activeBg = '#1a6fe8', children }) {
+    const bg = active ? activeBg : 'rgba(255,255,255,0.12)';
     return (
-        <button onClick={onClick} title={label} style={ctrlBtn(bg)}>
+        <button onClick={onClick} title={label} style={{ width: 52, height: 52, borderRadius: '50%', background: bg, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0 }}>
             {children}
         </button>
     );
-}
-
-function ctrlBtn(bg) {
-    return { width: 52, height: 52, borderRadius: '50%', background: bg, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0 };
 }
 
 function Modal({ title, onClose, children }) {
