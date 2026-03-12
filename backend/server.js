@@ -314,7 +314,7 @@ app.post('/api/parse-resume', upload.single('resume'), async (req, res) => {
                     content: `Here is the text extracted from the resume:\n\n${text}`
                 }
             ],
-            model: "llama3-70b-8192",
+            model: "llama-3.3-70b-versatile",
             temperature: 0.1,
             max_tokens: 2000,
         });
@@ -381,7 +381,7 @@ app.post('/api/match-candidates', async (req, res) => {
                             content: `Job Requirements: Title: ${jobTitle}, Description: ${jobDescription}, Skills: ${requiredSkills.join(", ")}, Min Experience: ${minExperience}, Location: ${location || 'Any'}\n\nCandidate Profile: ${JSON.stringify(candidate)}`
                         }
                     ],
-                    model: "llama3-70b-8192",
+                    model: "llama-3.3-70b-versatile",
                     temperature: 0.1,
                 });
 
@@ -450,7 +450,7 @@ app.post('/api/generate-interview-questions', async (req, res) => {
                     content: prompt
                 }
             ],
-            model: "llama3-70b-8192",
+            model: "llama-3.3-70b-versatile",
             temperature: 0.7,
         });
 
