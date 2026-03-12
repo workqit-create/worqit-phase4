@@ -37,9 +37,9 @@ export default function IncomingCallPopup({ currentUser }) {
         callService.on('call-ended', onCallEnded);
 
         return () => {
-            callService.off('incoming-call');
-            callService.off('call-status-update');
-            callService.off('call-ended');
+            callService.off('incoming-call', onIncoming);
+            callService.off('call-status-update', onStatusUpdate);
+            callService.off('call-ended', onCallEnded);
         };
         // eslint-disable-next-line
     }, [currentUser?.uid]); // Only re-run if the user changes, NOT on every render

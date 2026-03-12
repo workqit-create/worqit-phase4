@@ -300,8 +300,8 @@ export default function MeetingRoom() {
         return () => {
             if (readyCheckInterval) clearInterval(readyCheckInterval);
             callService.stopListeningForSignals(onSignal);
-            callService.off('call-ended');
-            callService.off('call-status-update');
+            callService.off('call-ended', onCallEnded);
+            callService.off('call-status-update', onCallStatusUpdate);
             callService.stopListeningForControlEvents(onControl);
             callService.stopListeningForChatMessages(onChat);
             destroyPeer();

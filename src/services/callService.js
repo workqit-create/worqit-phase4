@@ -5,7 +5,7 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'
 class CallService {
     constructor() {
         this.socket = null;
-        this.listeners = {};
+        this.listeners = {}; // key: eventName, value: array of callbacks
     }
 
     connect(userId) {
@@ -16,47 +16,44 @@ class CallService {
 
             this.socket.on('connect', () => {
                 console.log('Connected to signaling server');
-                // Always re-register on (re)connect so server mapping stays fresh
                 if (this._registeredUserId) {
                     this.socket.emit('register-user', this._registeredUserId);
                 }
             });
 
-            this.socket.on('incoming-call', (data) => {
-                if (this.listeners['incoming-call']) {
-                    this.listeners['incoming-call'](data);
-                }
-            });
-
-            this.socket.on('call-status-update', (data) => {
-                if (this.listeners['call-status-update']) {
-                    this.listeners['call-status-update'](data);
-                }
-            });
-
-            this.socket.on('call-failed', (data) => {
-                if (this.listeners['call-failed']) {
-                    this.listeners['call-failed'](data);
-                }
-            });
-
-            // ── Bridge call-ended so MeetingRoom's listener fires ──
-            this.socket.on('call-ended', () => {
-                if (this.listeners['call-ended']) {
-                    this.listeners['call-ended']();
-                }
-            });
+            this._setupSocketListener('incoming-call');
+            this._setupSocketListener('call-status-update');
+            this._setupSocketListener('call-failed');
+            this._setupSocketListener('call-ended');
+            this._setupSocketListener('control-event');
+            this._setupSocketListener('chat-message');
+            this._setupSocketListener('webrtc-signal');
         }
 
-        // Always register / re-register the user immediately.
-        // If socket just opened, the 'connect' event fires and registers.
-        // If socket was already open (reconnected or pre-existing), emit now.
         if (userId) {
             this._registeredUserId = userId;
             if (this.socket.connected) {
                 this.socket.emit('register-user', userId);
             }
         }
+    }
+
+    _setupSocketListener(event) {
+        this.socket.on(event, (data) => {
+            if (this.listeners[event]) {
+                const results = [];
+                // Use a copy to avoid issues if a listener removes itself during execution
+                [...this.listeners[event]].forEach(cb => {
+                    try {
+                        const res = cb(data);
+                        if (res !== undefined) results.push(res);
+                    } catch (e) {
+                        console.error(`Error in listener for ${event}:`, e);
+                    }
+                });
+                return results;
+            }
+        });
     }
 
     disconnect() {
@@ -79,15 +76,11 @@ class CallService {
     }
 
     listenForControlEvents(callback) {
-        if (this.socket) {
-            this.socket.on('control-event', callback);
-        }
+        this.on('control-event', callback);
     }
 
     stopListeningForControlEvents(callback) {
-        if (this.socket) {
-            this.socket.off('control-event', callback);
-        }
+        this.off('control-event', callback);
     }
 
     sendChatMessage(targetUserId, fromUserName, message) {
@@ -97,15 +90,11 @@ class CallService {
     }
 
     listenForChatMessages(callback) {
-        if (this.socket) {
-            this.socket.on('chat-message', callback);
-        }
+        this.on('chat-message', callback);
     }
 
     stopListeningForChatMessages(callback) {
-        if (this.socket) {
-            this.socket.off('chat-message', callback);
-        }
+        this.off('chat-message', callback);
     }
 
     initiateCall(targetUserId, fromUserId, fromUserName, meetLink) {
@@ -135,11 +124,19 @@ class CallService {
     }
 
     on(event, callback) {
-        this.listeners[event] = callback;
+        if (!this.listeners[event]) {
+            this.listeners[event] = [];
+        }
+        this.listeners[event].push(callback);
     }
 
-    off(event) {
-        delete this.listeners[event];
+    off(event, callback) {
+        if (!this.listeners[event]) return;
+        if (callback) {
+            this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
+        } else {
+            delete this.listeners[event];
+        }
     }
 
     sendSignal(targetUserId, fromUserId, signal) {
