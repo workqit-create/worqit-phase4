@@ -183,7 +183,7 @@ export default function MeetingRoom() {
 
             // ── Receiver: Caller says "are you ready?" ─────────────────
             if (sig.type === 'ready-check') {
-                if (!amCaller && streamRef.current && !readySentRef.current) {
+                if (!amCaller && streamRef.current) {
                     readySentRef.current = true;
                     callService.sendSignal(theirUid, myUid, { type: 'ready' });
                 }
@@ -271,13 +271,21 @@ export default function MeetingRoom() {
                 if (myVideo.current) myVideo.current.srcObject = stream;
 
                 if (amCaller) {
-                    // Retry ready-check every 2s until receiver responds
-                    const sendCheck = () => callService.sendSignal(theirUid, myUid, { type: 'ready-check' });
-                    sendCheck(); // First ping immediately
-                    readyCheckInterval = setInterval(() => {
-                        if (peerBuilt) { clearInterval(readyCheckInterval); return; }
-                        sendCheck();
-                    }, 2000);
+                    // If we already got 'ready' signal while waiting for stream, build peer now
+                    if (pendingRef.current?.waitingForStream) {
+                        pendingRef.current = null;
+                        peerBuilt = true;
+                        if (readyCheckInterval) { clearInterval(readyCheckInterval); readyCheckInterval = null; }
+                        buildCallerPeer(stream);
+                    } else {
+                        // Retry ready-check every 2s until receiver responds
+                        const sendCheck = () => callService.sendSignal(theirUid, myUid, { type: 'ready-check' });
+                        sendCheck(); // First ping immediately
+                        readyCheckInterval = setInterval(() => {
+                            if (peerBuilt) { clearInterval(readyCheckInterval); return; }
+                            sendCheck();
+                        }, 2000);
+                    }
                 } else {
                     // Receiver: check if offer arrived before camera was ready
                     if (pendingRef.current && pendingRef.current.type === 'offer') {

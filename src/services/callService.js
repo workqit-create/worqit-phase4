@@ -150,15 +150,11 @@ class CallService {
     }
 
     listenForSignals(callback) {
-        if (this.socket) {
-            this.socket.on('webrtc-signal', callback);
-        }
+        this.on('webrtc-signal', callback);
     }
 
     stopListeningForSignals(callback) {
-        if (this.socket) {
-            this.socket.off('webrtc-signal', callback);
-        }
+        this.off('webrtc-signal', callback);
     }
 }
 
