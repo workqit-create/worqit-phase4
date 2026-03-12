@@ -325,6 +325,9 @@ app.post('/api/parse-resume', upload.single('resume'), async (req, res) => {
         res.json(parsedJSON);
     } catch (error) {
         console.error("Error parsing resume:", error);
+        if (error.status === 401) {
+            return res.status(401).json({ error: "Your Groq API key is invalid or revoked. Please update your .env file with a new key." });
+        }
         res.status(500).json({ error: "Failed to parse resume" });
     }
 });
@@ -401,6 +404,9 @@ app.post('/api/match-candidates', async (req, res) => {
 
     } catch (error) {
         console.error("Error matching candidates:", error);
+        if (error.status === 401) {
+            return res.status(401).json({ error: "Your Groq API key is invalid or revoked. Please update your .env file with a new key." });
+        }
         res.status(500).json({ error: "Failed to match candidates" });
     }
 });
@@ -430,6 +436,9 @@ app.post('/api/generate-interview-questions', async (req, res) => {
         res.json({ questions });
     } catch (error) {
         console.error("Error generating questions:", error);
+        if (error.status === 401) {
+            return res.status(401).json({ error: "Your Groq API key is invalid or revoked. Please update your .env file with a new key." });
+        }
         res.status(500).json({ error: "Failed to generate questions" });
     }
 });
