@@ -412,7 +412,11 @@ export default function MeetingRoom() {
                 body: JSON.stringify({ prompt: aiPrompt }),
             });
             const data = await res.json();
-            setAiResult(data.questions || 'No questions generated.');
+            if (!res.ok) {
+                setAiResult(`AI Error: ${data.error || 'Failed to generate questions.'}`);
+            } else {
+                setAiResult(data.questions || 'No questions generated.');
+            }
         } catch {
             setAiResult('Network error. Make sure the backend is reachable.');
         }

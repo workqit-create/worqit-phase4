@@ -26,7 +26,14 @@ try {
     console.error("Firebase Admin Init Error:", e.message);
 }
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || 'placeholder_key' });
+const getGroqClient = () => {
+    const key = process.env.GROQ_API_KEY;
+    if (!key || key === 'placeholder_key') {
+        throw new Error("GROQ_API_KEY is not configured on the server.");
+    }
+    return new Groq({ apiKey: key });
+};
+
 const upload = multer({ storage: multer.memoryStorage() });
 const app = express();
 const server = require('http').createServer(app);
@@ -295,6 +302,7 @@ app.post('/api/parse-resume', upload.single('resume'), async (req, res) => {
         const data = await pdfParse(req.file.buffer);
         const text = data.text;
 
+        const groq = getGroqClient();
         const completion = await groq.chat.completions.create({
             messages: [
                 {
@@ -324,11 +332,17 @@ app.post('/api/parse-resume', upload.single('resume'), async (req, res) => {
 
         res.json(parsedJSON);
     } catch (error) {
-        console.error("Error parsing resume:", error);
-        if (error.status === 401) {
-            return res.status(401).json({ error: "Your Groq API key is invalid or revoked. Please update your .env file with a new key." });
+        console.error("Error parsing resume:", error.message || error);
+        
+        if (error.message.includes("not configured")) {
+            return res.status(500).json({ error: "The AI service is not properly configured on the server. Please check your Render environment variables." });
         }
-        res.status(500).json({ error: "Failed to parse resume" });
+        
+        if (error.status === 401 || error.message.includes("401")) {
+            return res.status(401).json({ error: "Your Groq API key is invalid or revoked. Please update your Render environment variables with a new key." });
+        }
+        
+        res.status(500).json({ error: `AI Error: ${error.message || "Failed to parse resume"}` });
     }
 });
 
@@ -349,6 +363,7 @@ app.post('/api/match-candidates', async (req, res) => {
         });
 
         const matchedCandidates = [];
+        const groq = getGroqClient();
 
         // Process in batches of 5 to avoid rate limits
         const batchSize = 5;
@@ -403,11 +418,17 @@ app.post('/api/match-candidates', async (req, res) => {
         res.json(matchedCandidates);
 
     } catch (error) {
-        console.error("Error matching candidates:", error);
-        if (error.status === 401) {
-            return res.status(401).json({ error: "Your Groq API key is invalid or revoked. Please update your .env file with a new key." });
+        console.error("Error matching candidates:", error.message || error);
+        
+        if (error.message.includes("not configured")) {
+            return res.status(500).json({ error: "The AI service is not properly configured on the server. Please check your Render environment variables." });
         }
-        res.status(500).json({ error: "Failed to match candidates" });
+        
+        if (error.status === 401 || error.message.includes("401")) {
+            return res.status(401).json({ error: "Your Groq API key is invalid or revoked. Please update your Render environment variables with a new key." });
+        }
+
+        res.status(500).json({ error: `AI Error: ${error.message || "Failed to match candidates"}` });
     }
 });
 
@@ -417,6 +438,7 @@ app.post('/api/generate-interview-questions', async (req, res) => {
         const { prompt } = req.body;
         if (!prompt) return res.status(400).json({ error: "Prompt is required" });
 
+        const groq = getGroqClient();
         const completion = await groq.chat.completions.create({
             messages: [
                 {
@@ -435,11 +457,22 @@ app.post('/api/generate-interview-questions', async (req, res) => {
         const questions = completion.choices[0]?.message?.content || "Could not generate questions.";
         res.json({ questions });
     } catch (error) {
-        console.error("Error generating questions:", error);
-        if (error.status === 401) {
-            return res.status(401).json({ error: "Your Groq API key is invalid or revoked. Please update your .env file with a new key." });
+        console.error("Error generating questions:", error.message || error);
+        
+        // Detailed error messages based on common failures
+        if (error.message.includes("not configured")) {
+            return res.status(500).json({ error: "The AI service is not properly configured on the server. Please check your Render environment variables." });
         }
-        res.status(500).json({ error: "Failed to generate questions" });
+        
+        if (error.status === 401 || error.message.includes("401")) {
+            return res.status(401).json({ error: "Your Groq API key is invalid or revoked. Please update your Render environment variables with a new key." });
+        }
+        
+        if (error.status === 429 || error.message.includes("429")) {
+            return res.status(429).json({ error: "Rate limit reached. Please try again in a few moments." });
+        }
+
+        res.status(500).json({ error: `AI Error: ${error.message || "Failed to generate questions"}` });
     }
 });
 
