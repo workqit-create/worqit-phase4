@@ -14,6 +14,9 @@ export default function IncomingCallPopup({ currentUser }) {
     useEffect(() => {
         if (!currentUser) return;
 
+        // Ensure we are connected and registered to receive calls
+        callService.connect(currentUser.uid);
+
         const onIncoming = (data) => {
             setIncomingCall(data);
         };
@@ -25,12 +28,18 @@ export default function IncomingCallPopup({ currentUser }) {
             }
         };
 
+        const onCallEnded = () => {
+            setIncomingCall(null);
+        };
+
         callService.on('incoming-call', onIncoming);
         callService.on('call-status-update', onStatusUpdate);
+        callService.on('call-ended', onCallEnded);
 
         return () => {
             callService.off('incoming-call');
             callService.off('call-status-update');
+            callService.off('call-ended');
         };
         // eslint-disable-next-line
     }, [currentUser?.uid]); // Only re-run if the user changes, NOT on every render

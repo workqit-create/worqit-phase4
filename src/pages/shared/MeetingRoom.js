@@ -28,12 +28,14 @@ export default function MeetingRoom() {
     const mainRef = useRef(null);
     const streamRef = useRef(null);
     const peerRef = useRef(null);
-    const pendingRef = useRef(null);  // buffered offer/ICE from callee side
+    const pendingRef = useRef(null);  // buffered offer from callee side
+    const pendingSignalsRef = useRef([]); // buffered ICE candidates
     const readySentRef = useRef(false); // prevent duplicate ready signals
     const canvasRef = useRef(null);
     const animFrameRef = useRef(null);
 
     // ── UI state ───────────────────────────────────────────────────────
+    const [authReady, setAuthReady] = useState(!!currentUser);
     const [connected, setConnected] = useState(false);
     const [status, setStatus] = useState(isCaller ? 'Calling…' : 'Waiting for caller…');
     const [micMuted, setMicMuted] = useState(false);
@@ -110,6 +112,12 @@ export default function MeetingRoom() {
         p.on('close', () => { setConnected(false); setStatus('Call ended'); });
         p.on('error', err => { console.error('Peer error', err); });
         peerRef.current = p;
+
+        // Flush buffered signals
+        if (pendingSignalsRef.current.length > 0) {
+            pendingSignalsRef.current.forEach(sig => p.signal(sig));
+            pendingSignalsRef.current = [];
+        }
     }, [targetUserId, currentUser, destroyPeer]);
 
     // ── Build Receiver peer (initiator = false) ────────────────────────
@@ -136,21 +144,37 @@ export default function MeetingRoom() {
         });
         p.on('close', () => { setConnected(false); setStatus('Call ended'); });
         p.on('error', err => { console.error('Peer error', err); });
+
         p.signal(offerSignal);
         peerRef.current = p;
+
+        // Flush buffered signals
+        if (pendingSignalsRef.current.length > 0) {
+            pendingSignalsRef.current.forEach(sig => p.signal(sig));
+            pendingSignalsRef.current = [];
+        }
     }, [targetUserId, currentUser, destroyPeer]);
 
+    // Wait for Firebase auth to resolve before proceeding
+    useEffect(() => {
+        if (currentUser?.uid && !authReady) setAuthReady(true);
+    }, [currentUser, authReady]);
+
     // ╔══════════════════════════════════════════════════════════════╗
-    // ║  MAIN EFFECT — runs ONCE on mount only                       ║
-    // ║  DO NOT add more deps — stable refs mean we never need to    ║
+    // ║  MAIN EFFECT — runs once auth + targetUserId are ready       ║
     // ╚══════════════════════════════════════════════════════════════╝
     useEffect(() => {
-        if (!targetUserId || !currentUser?.uid) return;
+        if (!targetUserId || !currentUser?.uid || !authReady) return;
+
+        // Guarantee socket is alive and this user is registered before any WebRTC signals are sent
+        callService.connect(currentUser.uid);
 
         // ── Capture stable values in closure ──────────────────────────
         const myUid = currentUser.uid;
         const theirUid = targetUserId;
         const amCaller = isCaller;
+        let readyCheckInterval = null; // For caller retry loop
+        let peerBuilt = false;         // Flag so we only build peer once
 
         // ── Signal handler ────────────────────────────────────────────
         const onSignal = (data) => {
@@ -168,7 +192,9 @@ export default function MeetingRoom() {
 
             // ── Caller: Receiver is ready, now build peer ──────────────
             if (sig.type === 'ready') {
-                if (amCaller) {
+                if (amCaller && !peerBuilt) {
+                    peerBuilt = true;
+                    if (readyCheckInterval) { clearInterval(readyCheckInterval); readyCheckInterval = null; }
                     if (streamRef.current) {
                         buildCallerPeer(streamRef.current);
                     } else {
@@ -191,15 +217,24 @@ export default function MeetingRoom() {
             // ── Both: ICE candidates / answers ────────────────────────
             if (peerRef.current && !peerRef.current.destroyed) {
                 try { peerRef.current.signal(sig); } catch (_) { }
+            } else {
+                pendingSignalsRef.current.push(sig);
             }
         };
 
         // ── Call ended by other side ──────────────────────────────────
         const onCallEnded = () => {
-            showToast('Call ended by the other person.');
-            destroyPeer();
-            stopStream();
-            navigate(-1);
+            showToast('The other person ended the call.');
+            // Don't forcibly navigate — let user click End Call
+        };
+
+        // ── Call declined by other side ───────────────────────────────
+        const onCallStatusUpdate = (data) => {
+            if (data.status === 'declined') {
+                setStatus('Call declined.');
+                showToast(`${otherUserName} declined the call.`);
+                setTimeout(() => doLeave(), 3000);
+            }
         };
 
         // ── Control events (blur, hand) ───────────────────────────────
@@ -225,6 +260,7 @@ export default function MeetingRoom() {
         // ── Register listeners ────────────────────────────────────────
         callService.listenForSignals(onSignal);
         callService.on('call-ended', onCallEnded);
+        callService.on('call-status-update', onCallStatusUpdate);
         callService.listenForControlEvents(onControl);
         callService.listenForChatMessages(onChat);
 
@@ -235,8 +271,13 @@ export default function MeetingRoom() {
                 if (myVideo.current) myVideo.current.srcObject = stream;
 
                 if (amCaller) {
-                    // Send ready-check to see if receiver is already waiting
-                    callService.sendSignal(theirUid, myUid, { type: 'ready-check' });
+                    // Retry ready-check every 2s until receiver responds
+                    const sendCheck = () => callService.sendSignal(theirUid, myUid, { type: 'ready-check' });
+                    sendCheck(); // First ping immediately
+                    readyCheckInterval = setInterval(() => {
+                        if (peerBuilt) { clearInterval(readyCheckInterval); return; }
+                        sendCheck();
+                    }, 2000);
                 } else {
                     // Receiver: check if offer arrived before camera was ready
                     if (pendingRef.current && pendingRef.current.type === 'offer') {
@@ -257,15 +298,17 @@ export default function MeetingRoom() {
 
         // ── Cleanup on unmount ────────────────────────────────────────
         return () => {
+            if (readyCheckInterval) clearInterval(readyCheckInterval);
             callService.stopListeningForSignals(onSignal);
             callService.off('call-ended');
+            callService.off('call-status-update');
             callService.stopListeningForControlEvents(onControl);
             callService.stopListeningForChatMessages(onChat);
             destroyPeer();
             stopStream();
         };
         // eslint-disable-next-line
-    }, []); // ← EMPTY deps: runs once, uses closure & refs
+    }, [authReady]); // Re-run once auth is confirmed ready
 
 
     // ── Mic toggle ────────────────────────────────────────────────────

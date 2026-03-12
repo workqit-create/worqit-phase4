@@ -16,7 +16,10 @@ class CallService {
 
             this.socket.on('connect', () => {
                 console.log('Connected to signaling server');
-                this.socket.emit('register-user', userId);
+                // Always re-register on (re)connect so server mapping stays fresh
+                if (this._registeredUserId) {
+                    this.socket.emit('register-user', this._registeredUserId);
+                }
             });
 
             this.socket.on('incoming-call', (data) => {
@@ -35,7 +38,24 @@ class CallService {
                 if (this.listeners['call-failed']) {
                     this.listeners['call-failed'](data);
                 }
-            })
+            });
+
+            // ── Bridge call-ended so MeetingRoom's listener fires ──
+            this.socket.on('call-ended', () => {
+                if (this.listeners['call-ended']) {
+                    this.listeners['call-ended']();
+                }
+            });
+        }
+
+        // Always register / re-register the user immediately.
+        // If socket just opened, the 'connect' event fires and registers.
+        // If socket was already open (reconnected or pre-existing), emit now.
+        if (userId) {
+            this._registeredUserId = userId;
+            if (this.socket.connected) {
+                this.socket.emit('register-user', userId);
+            }
         }
     }
 
