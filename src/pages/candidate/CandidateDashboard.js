@@ -1,18 +1,21 @@
 // src/pages/candidate/CandidateDashboard.js
 // ═══════════════════════════════════════════════════════
-//  Candidate shell — nav + sub-routing
-//  Replaces the ComingSoon placeholder in App.js
+//  ULTRA-PREMIUM REBUILD (STITCH REFERENCE)
+//  + OFFICIAL LOGO INTEGRATION
+//  + Terminology: Terminate Session → Sign Out
+//  + Top Navigation Utility: Feed, Applications, Insights
+//  + Refined Color Grading & Spacing
 // ═══════════════════════════════════════════════════════
 
 import React, { useState, useEffect } from "react";
-import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { C } from "../shared/theme";
-import { LOGO_HORIZ } from "../../assets/logos";
 import { getUserConversations } from "../../services/messageService";
 import NotificationDropdown from "../../components/NotificationDropdown";
 import { subscribeToNotifications } from "../../services/notificationService";
 import { requestPushPermission } from "../../services/pushNotificationService";
+import { LOGO_HORIZ } from "../../assets/logos";
 
 import CandidateFeed from "./Feed";
 import CandidateApplications from "./Applications";
@@ -23,49 +26,26 @@ import DocumentVault from "./DocumentVault";
 import JobAlerts from "./JobAlerts";
 import CandidateAnalytics from "./Analytics";
 
-const NAV_ITEMS = [
-  { path: "", label: "Feed", icon: "🔍" },
-  { path: "applications", label: "Applications", icon: "📋" },
-  { path: "network", label: "Network", icon: "🤝" },
-  { path: "messages", label: "Messages", icon: "💬" },
-  { path: "alerts", label: "Job Alerts", icon: "🔔" },
-  { path: "analytics", label: "Insights", icon: "📈" },
-  { path: "documents", label: "Documents", icon: "📁" },
-  { path: "profile", label: "Profile", icon: "👤" },
-];
-
 export default function CandidateDashboard() {
-  const { userProfile, logout } = useAuth();
+  const { userProfile, logout, currentUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [unread, setUnread] = useState(0);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { currentUser } = useAuth();
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [showNotifs, setShowNotifs] = useState(false);
 
-  // Request Push Notification Permission
   useEffect(() => {
-    if (currentUser?.uid) {
-      requestPushPermission(currentUser.uid);
-    }
+    if (currentUser?.uid) requestPushPermission(currentUser.uid);
   }, [currentUser]);
 
-  // Poll unread count
   useEffect(() => {
     if (!currentUser) return;
-    async function fetchUnread() {
-      try {
-        const convs = await getUserConversations(currentUser.uid);
-        setUnread(convs.reduce((sum, c) => sum + (c.myUnread || 0), 0));
-      } catch { }
+    async function u() {
+      try { const c = await getUserConversations(currentUser.uid); setUnread(c.reduce((s, x) => s + (x.myUnread || 0), 0)); } catch { }
     }
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 15000);
-    return () => clearInterval(interval);
+    u(); const iv = setInterval(u, 15000); return () => clearInterval(iv);
   }, [currentUser]);
 
-  // Notifications
   useEffect(() => {
     if (!currentUser) return;
     const unsub = subscribeToNotifications(currentUser.uid, (notifs) => {
@@ -74,203 +54,206 @@ export default function CandidateDashboard() {
     return () => unsub();
   }, [currentUser]);
 
-  const activePath = location.pathname.split("/candidate/")[1] || "";
-
-  const S = {
-    shell: { display: "flex", minHeight: "100vh", background: C.ink, fontFamily: C.font },
-    sidebar: {
-      width: 240, flexShrink: 0, background: C.ink2,
-      borderRight: `1px solid ${C.line}`,
-      display: "flex", flexDirection: "column",
-      position: "sticky", top: 0, height: "100vh",
-    },
-    logoArea: {
-      padding: "20px 20px 16px",
-      borderBottom: `1px solid ${C.line}`,
-      display: "flex", alignItems: "center", gap: 10,
-    },
-    nav: { flex: 1, padding: "16px 12px", display: "flex", flexDirection: "column", gap: 4 },
-    navItem: (active) => ({
-      display: "flex", alignItems: "center", gap: 10,
-      padding: "10px 14px", borderRadius: 10,
-      cursor: "pointer", transition: "all .15s",
-      background: active ? "rgba(26,111,232,.15)" : "transparent",
-      border: active ? "1px solid rgba(26,111,232,.25)" : "1px solid transparent",
-      color: active ? "#fff" : C.silver,
-      fontWeight: active ? 700 : 500,
-      fontSize: 14,
-      textDecoration: "none",
-      position: "relative",
-    }),
-    badge: {
-      marginLeft: "auto",
-      background: C.grad,
-      borderRadius: "100px",
-      padding: "1px 7px",
-      fontSize: 11,
-      fontWeight: 700,
-      color: "#fff",
-    },
-    notifBadge: {
-      position: "absolute",
-      top: -4,
-      right: -8,
-      background: C.grad,
-      borderRadius: "100px",
-      padding: "1px 5px",
-      fontSize: 10,
-      fontWeight: 700,
-      color: "#fff",
-    },
-    bottom: { padding: "16px 12px", borderTop: `1px solid ${C.line}` },
-    userInfo: { display: "flex", alignItems: "center", gap: 10, marginBottom: 10 },
-    avatar: {
-      width: 34, height: 34, borderRadius: "50%",
-      background: C.grad, display: "flex",
-      alignItems: "center", justifyContent: "center",
-      fontWeight: 800, fontSize: 13, color: "#fff", flexShrink: 0,
-    },
-    main: { flex: 1, overflow: "auto" },
-
-    // Mobile top bar
-    mobileBar: {
-      display: "none",
-      position: "sticky", top: 0, zIndex: 100,
-      background: C.ink2, borderBottom: `1px solid ${C.line}`,
-      padding: "0 16px", height: 56,
-      alignItems: "center", justifyContent: "space-between",
-    },
-  };
-
+  const activePath = location.pathname.replace(/^\/candidate\/?/, "").split("/")[0] || "";
   const initials = (userProfile?.name || "C").split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+
+  // ── Ultra-Premium Style System ──
+  const S = {
+    shell: {
+      display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden",
+      fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#1D1D1F",
+      background: `radial-gradient(at 0% 0%, rgba(0, 85, 255, 0.04) 0px, transparent 50%),
+                   radial-gradient(at 100% 100%, rgba(245, 166, 35, 0.03) 0px, transparent 50%),
+                   #fcfcfd`,
+    },
+    header: {
+      height: "90px", display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "0 48px", zIndex: 100, flexShrink: 0,
+      background: "rgba(255, 255, 255, 0.7)", backdropFilter: "blur(24px)",
+      borderBottom: "1px solid rgba(0, 0, 0, 0.06)",
+    },
+    logoArea: { display: "flex", alignItems: "center", gap: "40px" },
+    logo: { height: "32px", width: "auto", cursor: "pointer", transition: "transform 0.3s ease" },
+    topNav: { display: "flex", alignItems: "center", gap: "8px", marginLeft: "20px" },
+    topLink: (active) => ({
+      padding: "8px 16px", borderRadius: "100px", fontSize: "13px", fontWeight: 700,
+      color: active ? "#0055FF" : "#6E6E73", textDecoration: "none", transition: "all 0.2s",
+      background: active ? "rgba(0, 85, 255, 0.06)" : "transparent",
+    }),
+    searchWrap: { position: "relative", width: "400px" },
+    searchInput: {
+      width: "100%", background: "#fff", border: "1px solid #E2E8F0",
+      borderRadius: "14px", padding: "10px 16px 10px 44px", fontSize: "13px", fontWeight: 600,
+      outline: "none", transition: "all 0.3s ease",
+    },
+    headerActions: { display: "flex", alignItems: "center", gap: "24px" },
+    actionBtn: {
+      width: "44px", height: "44px", display: "flex", alignItems: "center", justifyContent: "center",
+      background: "#fff", border: "1px solid #E2E8F0", borderRadius: "12px", cursor: "pointer",
+      color: "#6E6E73", transition: "all 0.2s"
+    },
+    notifDot: {
+      position: "absolute", top: "10px", right: "10px", width: "10px", height: "10px",
+      background: "#0055FF", borderRadius: "50%", border: "2px solid #fff",
+      boxShadow: "0 0 12px rgba(0, 85, 255, 0.5)"
+    },
+    profileSection: {
+      display: "flex", alignItems: "center", gap: "16px", paddingLeft: "24px",
+      borderLeft: "1px solid rgba(0,0,0,0.08)"
+    },
+    avatar: {
+      width: "44px", height: "44px", borderRadius: "50%", background: "linear-gradient(135deg, #0055FF, #00AAFF)",
+      display: "flex", alignItems: "center", justifyContent: "center", color: "#fff",
+      fontWeight: 900, fontSize: "16px", cursor: "pointer", boxShadow: "0 4px 12px rgba(0, 85, 255, 0.2)"
+    },
+    body: { display: "flex", flex: 1, overflow: "hidden" },
+    sidebar: {
+      width: "300px", background: "rgba(255, 255, 255, 0.4)", backdropFilter: "blur(12px)",
+      borderRight: "1px solid rgba(0, 0, 0, 0.05)", display: "flex", flexDirection: "column",
+      padding: "32px 24px"
+    },
+    main: { flex: 1, overflowY: "auto", padding: "48px 64px", scrollBehavior: "smooth" },
+    sideHeading: { fontSize: "10px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "2.5px", color: "#94A3B8", marginBottom: "16px", paddingLeft: "12px" },
+    navItem: (active) => ({
+      display: "flex", alignItems: "center", gap: "12px", padding: "12px 16px",
+      borderRadius: "12px", cursor: "pointer", transition: "all 0.3s",
+      color: active ? "#0055FF" : "#6E6E73",
+      fontWeight: active ? 800 : 600, fontSize: "14px",
+      background: active ? "rgba(0, 85, 255, 0.08)" : "transparent",
+      marginBottom: "2px"
+    }),
+    statusCard: {
+      padding: "24px", borderRadius: "24px", background: "#1D1D1F", color: "#fff",
+      boxShadow: "0 20px 40px -15px rgba(0, 0, 0, 0.2)", position: "relative",
+      overflow: "hidden", marginTop: "auto", marginBottom: "24px"
+    },
+    signoutBtn: {
+      width: "100%", marginTop: "12px", background: "rgba(0,0,0,0.03)", border: "1px solid rgba(0,0,0,0.05)",
+      color: "#6E6E73", fontSize: "11px", fontWeight: 800, textTransform: "uppercase",
+      letterSpacing: "1.5px", padding: "12px", borderRadius: "12px", cursor: "pointer", transition: "all 0.2s"
+    }
+  };
 
   return (
     <div style={S.shell}>
-      {/* SIDEBAR */}
-      <div style={S.sidebar} className="wq-sidebar">
+      {/* TOP NAVIGATION */}
+      <header style={S.header}>
         <div style={S.logoArea}>
-          <img src={LOGO_HORIZ} alt="Worqit" style={{ height: 36, width: "auto" }} />
-          <div style={{ marginLeft: "auto", cursor: "pointer", position: "relative" }} onClick={() => setShowNotifs(!showNotifs)}>
-            <span style={{ fontSize: 20 }}>🔔</span>
-            {unreadNotifs > 0 && <span style={S.notifBadge}>{unreadNotifs > 9 ? "9+" : unreadNotifs}</span>}
-            {showNotifs && (
-              <div style={{ position: "absolute", top: 30, left: 30 }} onClick={e => e.stopPropagation()}>
-                <NotificationDropdown
-                  userId={currentUser?.uid}
-                  onClose={() => setShowNotifs(false)}
-                  className="wq-notif-dropdown"
-                />
-              </div>
-            )}
-          </div>
+          <img 
+            src={LOGO_HORIZ} 
+            alt="Worqit" 
+            style={S.logo} 
+            onClick={() => navigate("/candidate")}
+            onMouseEnter={e => e.currentTarget.style.transform = "scale(1.02)"}
+            onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+          />
+          
+          <nav style={S.topNav}>
+            <Link to="/candidate" style={S.topLink(activePath === "")}>Explore</Link>
+            <Link to="/candidate/applications" style={S.topLink(activePath === "applications")}>My Applications</Link>
+            <Link to="/candidate/analytics" style={S.topLink(activePath === "analytics")}>Growth</Link>
+          </nav>
         </div>
 
-        <nav style={S.nav}>
-          {NAV_ITEMS.map(item => {
-            const isActive = activePath === item.path || (item.path === "" && activePath === "");
-            const isMessages = item.path === "messages";
-            return (
-              <div
-                key={item.path}
-                style={S.navItem(isActive)}
-                onClick={() => navigate(`/candidate/${item.path}`)}
-              >
-                <span style={{ fontSize: 16 }}>{item.icon}</span>
-                {item.label}
-                {isMessages && unread > 0 && (
-                  <span style={S.badge}>{unread > 9 ? "9+" : unread}</span>
-                )}
-              </div>
-            );
-          })}
-        </nav>
-
-        <div style={S.bottom}>
-          <div style={S.userInfo}>
-            <div style={S.avatar}>{initials}</div>
-            <div style={{ overflow: "hidden" }}>
-              <div style={{ color: "#fff", fontWeight: 700, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {userProfile?.name || "Candidate"}
-              </div>
-              <div style={{ color: C.silver, fontSize: 11 }}>Job Seeker</div>
-            </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
+          <div style={S.searchWrap}>
+            <span className="material-symbols-outlined" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#94A3B8", fontSize: "18px" }}>search</span>
+            <input 
+              style={S.searchInput} 
+              placeholder="Search opportunities or elite networks..." 
+              type="text" 
+              onFocus={e => { e.currentTarget.style.borderColor = "#0055FF"; e.currentTarget.style.boxShadow = "0 0 0 4px rgba(0,85,255,0.05)"; }}
+              onBlur={e => { e.currentTarget.style.borderColor = "#E2E8F0"; e.currentTarget.style.boxShadow = "none"; }}
+            />
           </div>
-          <button
-            onClick={logout}
-            style={{
-              width: "100%", background: "rgba(255,255,255,.04)",
-              border: `1px solid ${C.line}`, borderRadius: 8,
-              padding: "8px 0", color: C.silver, fontSize: 13,
-              cursor: "pointer", fontFamily: C.font, fontWeight: 600,
-            }}
-          >Sign Out</button>
-        </div>
-      </div>
 
-      {/* MAIN CONTENT */}
-      <div style={S.main} className="wq-main-content">
-        <Routes>
-          <Route path="/" element={<CandidateFeed />} />
-          <Route path="/applications" element={<CandidateApplications />} />
-          <Route path="/network" element={<CandidateNetwork />} />
-          <Route path="/messages" element={<CandidateMessages />} />
-          <Route path="/messages/:convId" element={<CandidateMessages />} />
-          <Route path="/alerts" element={<JobAlerts />} />
-          <Route path="/analytics" element={<CandidateAnalytics />} />
-          <Route path="/documents" element={<DocumentVault />} />
-          <Route path="/profile" element={<CandidateProfile />} />
-        </Routes>
-      </div>
-
-      {/* MOBILE BOTTOM NAV */}
-      <div className="wq-bottom-nav" style={{
-        position: "fixed", bottom: 0, left: 0, right: 0,
-        background: "rgba(6,12,26,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-        borderTop: `1px solid ${C.line}`,
-        display: "flex", justifyContent: "space-around", alignItems: "center",
-        padding: "8px 0", paddingBottom: "max(8px, env(safe-area-inset-bottom))",
-        zIndex: 999
-      }}>
-        {NAV_ITEMS.filter(n => ["", "messages", "alerts", "profile"].includes(n.path)).map(item => {
-          const isActive = activePath === item.path || (item.path === "" && activePath === "");
-          const isMessages = item.path === "messages";
-          return (
-            <div
-              key={item.path}
-              onClick={() => navigate(`/candidate/${item.path}`)}
-              style={{
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-                color: isActive ? "#fff" : C.silver, padding: "8px 12px", borderRadius: 8,
-                position: "relative"
-              }}
-            >
-              <span style={{ fontSize: 20 }}>{item.icon}</span>
-              <span style={{ fontSize: 10, fontWeight: 600 }}>{item.label}</span>
-              {isMessages && unread > 0 && (
-                <span style={{
-                  position: "absolute", top: 2, right: 6,
-                  background: C.red, color: "#fff", fontSize: 10, fontWeight: 800,
-                  minWidth: 16, height: 16, borderRadius: 8,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  padding: "0 4px"
-                }}>
-                  {unread > 9 ? "9+" : unread}
-                </span>
+          <div style={S.headerActions}>
+            <button style={S.actionBtn} onClick={() => navigate("/candidate/messages")} title="Messages">
+              <span className="material-symbols-outlined">chat_bubble</span>
+            </button>
+            <button style={{ ...S.actionBtn, position: "relative" }} onClick={() => setShowNotifs(!showNotifs)} title="Notifications">
+              <span className="material-symbols-outlined">notifications</span>
+              {unreadNotifs > 0 && <div style={S.notifDot} />}
+              {showNotifs && (
+                <div style={{ position: "absolute", top: "54px", right: 0, zIndex: 200, width: "350px" }}>
+                  <NotificationDropdown userId={currentUser?.uid} onClose={() => setShowNotifs(false)} />
+                </div>
               )}
+            </button>
+            <button style={S.actionBtn} onClick={() => navigate("/candidate/profile")} title="Settings">
+              <span className="material-symbols-outlined">settings</span>
+            </button>
+          </div>
+
+          <div style={S.profileSection}>
+            <div style={{ textAlign: "right" }}>
+              <p style={{ fontSize: "13px", fontWeight: 800, margin: 0 }}>{userProfile?.name || "Professional"}</p>
+              <p style={{ fontSize: "9px", fontWeight: 900, color: "#0055FF", textTransform: "uppercase", letterSpacing: "1.5px", margin: 0 }}>Elite Seeker</p>
             </div>
-          );
-        })}
+            <div style={S.avatar} onClick={() => navigate("/candidate/profile")}>
+              {initials}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div style={S.body}>
+        {/* SIDEBAR */}
+        <aside style={S.sidebar}>
+          <div style={{ flex: 1 }}>
+            <div style={S.sideHeading}>Discovery</div>
+            {[
+              { path: "", label: "Opportunity Feed", icon: "explore" },
+              { path: "applications", label: "My Applications", icon: "assignment_turned_in" },
+              { path: "network", label: "Elite Network", icon: "hub" },
+              { path: "messages", label: "Direct Messages", icon: "chat_bubble", badge: unread },
+              { path: "alerts", label: "Job Alerts", icon: "notifications_active" },
+              { path: "analytics", label: "Growth Insights", icon: "analytics" },
+              { path: "documents", label: "Document Vault", icon: "folder_open" },
+              { path: "profile", label: "Elite Profile", icon: "account_circle" },
+            ].map(item => (
+              <div key={item.path} onClick={() => navigate(`/candidate/${item.path}`)} style={S.navItem(activePath === item.path)}>
+                <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>{item.icon}</span>
+                <span style={{ flex: 1 }}>{item.label}</span>
+                {item.badge > 0 && <span style={{ background: "#0055FF", color: "#fff", fontSize: "10px", fontWeight: 900, padding: "2px 8px", borderRadius: "10px" }}>{item.badge}</span>}
+              </div>
+            ))}
+          </div>
+
+          <div style={S.statusCard}>
+            <div style={{ position: "absolute", top: 0, right: 0, width: "100px", height: "100px", background: "rgba(0,85,255,0.1)", borderRadius: "50%", marginRight: "-50px", marginTop: "-50px" }} />
+            <h4 style={{ fontSize: "14px", fontWeight: 700, margin: "0 0 4px" }}>Elite Profile</h4>
+            <p style={{ fontSize: "10px", color: "#94A3B8", margin: "0 0 16px" }}>Your visibility is at 84%</p>
+            <div style={{ width: "100%", height: "4px", background: "rgba(255,255,255,0.1)", borderRadius: "2px", overflow: "hidden" }}>
+              <div style={{ width: "84%", height: "100%", background: "#0055FF" }} />
+            </div>
+          </div>
+
+          <button 
+            onClick={logout} 
+            style={S.signoutBtn}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(220,50,50,0.05)"; e.currentTarget.style.color = "#E53E3E"; e.currentTarget.style.borderColor = "rgba(220,50,50,0.1)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,0,0,0.03)"; e.currentTarget.style.color = "#6E6E73"; e.currentTarget.style.borderColor = "rgba(0,0,0,0.05)"; }}
+          >
+            Sign Out
+          </button>
+        </aside>
+
+        {/* MAIN CONTENT */}
+        <main style={S.main}>
+          <Routes>
+            <Route path="/" element={<CandidateFeed />} />
+            <Route path="/applications" element={<CandidateApplications />} />
+            <Route path="/network" element={<CandidateNetwork />} />
+            <Route path="/messages" element={<CandidateMessages />} />
+            <Route path="/messages/:convId" element={<CandidateMessages />} />
+            <Route path="/alerts" element={<JobAlerts />} />
+            <Route path="/analytics" element={<CandidateAnalytics />} />
+            <Route path="/documents" element={<DocumentVault />} />
+            <Route path="/profile" element={<CandidateProfile />} />
+          </Routes>
+        </main>
       </div>
-
-      <style>{`
-        .wq-bottom-nav { display: none !important; }
-
-        @media(max-width:768px){
-          .wq-sidebar { display: none !important; }
-          .wq-bottom-nav { display: flex !important; }
-          .wq-main-content { padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important; }
-        }
-      `}</style>
     </div>
   );
 }

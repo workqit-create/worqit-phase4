@@ -47,25 +47,50 @@ export default function HirerMessages() {
     return `${Math.floor(diff / 86400)}d`;
   };
 
-  return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: "24px 28px 0", borderBottom: `1px solid ${C.line}`, paddingBottom: 16 }}>
-        <h1 style={{ color: "#fff", fontSize: 22, fontWeight: 800, margin: 0 }}>Messages</h1>
-        <p style={{ color: C.silver, fontSize: 13, marginTop: 4 }}>All candidate conversations in one place</p>
-      </div>
+  const S = {
+    container: { height: "calc(100vh - 180px)", display: "flex", background: "#fff", borderRadius: "32px", border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 24px 48px -12px rgba(0,0,0,0.05)" },
+    sidebar: { width: "380px", borderRight: "1px solid #F1F5F9", display: "flex", flexDirection: "column", background: "rgba(255,255,255,0.7)", backdropFilter: "blur(20px)" },
+    sideHeader: { padding: "32px", borderBottom: "1px solid #F1F5F9" },
+    sideTitle: { fontSize: "24px", fontWeight: 900, color: "#1D1D1F", fontFamily: "'Outfit', sans-serif", letterSpacing: "-0.5px", margin: 0 },
+    sideSub: { fontSize: "12px", color: "#94A3B8", fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", marginTop: "4px" },
+    convList: { flex: 1, overflowY: "auto" },
+    convItem: (active) => ({
+      display: "flex", alignItems: "center", gap: "16px", padding: "20px 32px", cursor: "pointer",
+      background: active ? "rgba(0,85,255,0.04)" : "transparent",
+      borderLeft: `4px solid ${active ? "#0055FF" : "transparent"}`,
+      transition: "all 0.2s"
+    }),
+    avatar: {
+      width: "48px", height: "48px", borderRadius: "16px", background: "linear-gradient(135deg, #0055FF, #00AAFF)",
+      display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: "16px", position: "relative", flexShrink: 0
+    },
+    unreadBadge: {
+      position: "absolute", top: "-6px", right: "-6px", width: "20px", height: "20px", background: "#0055FF",
+      borderRadius: "50%", border: "2px solid #fff", display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: "9px", fontWeight: 900, color: "#fff"
+    },
+    chatArea: { flex: 1, display: "flex", flexDirection: "column", background: "#fff" },
+    emptyChat: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "48px", textAlign: "center" }
+  };
 
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        {/* Conversation list */}
-        <div style={{ width: 320, flexShrink: 0, borderRight: `1px solid ${C.line}`, overflowY: "auto", background: C.ink2 }}>
+  return (
+    <div style={S.container}>
+      {/* SIDEBAR */}
+      <div style={S.sidebar}>
+        <div style={S.sideHeader}>
+          <h2 style={S.sideTitle}>Elite Inbox</h2>
+          <p style={S.sideSub}>{conversations.length} Strategic Threads</p>
+        </div>
+
+        <div style={S.convList}>
           {loading ? (
-            <div style={{ padding: 20 }}>
-              {[1,2,3].map(i => <div key={i} style={{ height: 64, background: C.line, borderRadius: 10, marginBottom: 8, opacity: .5 }} />)}
+            <div style={{ padding: "32px" }}>
+              {[1, 2, 3].map(i => <div key={i} style={{ height: "80px", background: "#F1F5F9", borderRadius: "16px", marginBottom: "12px", opacity: 0.5 }} />)}
             </div>
           ) : conversations.length === 0 ? (
-            <div style={{ padding: "48px 20px", textAlign: "center", color: C.silver }}>
-              <div style={{ fontSize: 32, marginBottom: 10 }}>💬</div>
-              <div style={{ fontSize: 14, marginBottom: 6 }}>No conversations yet</div>
-              <div style={{ fontSize: 12, opacity: .7 }}>Go to Discover to message candidates</div>
+            <div style={{ padding: "64px 32px", textAlign: "center" }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "48px", color: "#E2E8F0", marginBottom: "16px" }}>chat_bubble</span>
+              <p style={{ color: "#94A3B8", fontWeight: 700, fontSize: "14px" }}>No conversations found.</p>
             </div>
           ) : (
             conversations.map(conv => {
@@ -73,68 +98,38 @@ export default function HirerMessages() {
               const other = conv.otherUser;
               const initial = (other?.name || "?").charAt(0).toUpperCase();
               return (
-                <div
-                  key={conv.id}
-                  onClick={() => handleSelect(conv)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 12,
-                    padding: "14px 16px", cursor: "pointer",
-                    background: isActive ? "rgba(26,111,232,.12)" : "transparent",
-                    borderLeft: isActive ? `3px solid ${C.royal}` : "3px solid transparent",
-                    transition: "background .15s",
-                  }}
-                >
-                  <div style={{
-                    width: 40, height: 40, borderRadius: "50%",
-                    background: C.grad, display: "flex", alignItems: "center",
-                    justifyContent: "center", fontWeight: 800, fontSize: 15,
-                    color: "#fff", flexShrink: 0, position: "relative",
-                  }}>
+                <div key={conv.id} onClick={() => handleSelect(conv)} style={S.convItem(isActive)}>
+                  <div style={S.avatar}>
                     {initial}
-                    {conv.myUnread > 0 && (
-                      <div style={{
-                        position: "absolute", top: -2, right: -2,
-                        width: 16, height: 16, background: C.royal,
-                        borderRadius: "50%", fontSize: 9, fontWeight: 800,
-                        color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
-                      }}>{conv.myUnread}</div>
-                    )}
+                    {conv.myUnread > 0 && <div style={S.unreadBadge}>{conv.myUnread}</div>}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 6 }}>
-                      <span style={{ color: "#fff", fontWeight: conv.myUnread > 0 ? 800 : 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {other?.name || "Unknown"}
-                      </span>
-                      <span style={{ color: C.silver, fontSize: 11, flexShrink: 0 }}>{timeAgo(conv.lastAt)}</span>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                      <span style={{ fontWeight: 800, fontSize: "15px", color: "#1D1D1F", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{other?.name || "Unknown"}</span>
+                      <span style={{ fontSize: "11px", color: "#94A3B8", fontWeight: 700 }}>{timeAgo(conv.lastAt)}</span>
                     </div>
-                    <div style={{ color: C.silver, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {other?.headline || "Candidate"}
-                    </div>
+                    <div style={{ fontSize: "13px", color: "#64748B", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{other?.headline || "Strategic Candidate"}</div>
                   </div>
                 </div>
               );
             })
           )}
         </div>
+      </div>
 
-        {/* Chat */}
-        <div style={{ flex: 1, overflow: "hidden" }}>
-          {selected ? (
-            <ChatWindow
-              convId={selected.id}
-              currentUid={currentUser.uid}
-              otherUser={selected.otherUser}
-            />
-          ) : (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: C.silver }}>
-              <div style={{ textAlign: "center" }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>💬</div>
-                <div style={{ fontSize: 15 }}>Select a conversation to start chatting</div>
-              </div>
-            </div>
-          )}
-        </div>
+      {/* CHAT AREA */}
+      <div style={S.chatArea}>
+        {selected ? (
+          <ChatWindow convId={selected.id} currentUid={currentUser.uid} otherUser={selected.otherUser} />
+        ) : (
+          <div style={S.emptyChat}>
+            <span className="material-symbols-outlined" style={{ fontSize: "64px", color: "#F1F5F9", marginBottom: "24px" }}>forum</span>
+            <h3 style={{ fontSize: "20px", fontWeight: 900, color: "#1D1D1F", marginBottom: "8px" }}>Direct Messaging</h3>
+            <p style={{ color: "#94A3B8", fontWeight: 600, maxWidth: "280px", lineHeight: 1.5 }}>Select a candidate from your inbox to begin strategic dialogue.</p>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+

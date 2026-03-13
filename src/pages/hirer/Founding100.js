@@ -33,70 +33,110 @@ export default function Founding100() {
     { n: "100", label: "Companies Max", desc: "Once all 100 spots are filled, this offer closes permanently." },
   ];
 
+  const S = {
+    container: { maxWidth: "1000px", margin: "0 auto", fontFamily: C.font, color: "#1D1D1F" },
+    header: { marginBottom: "48px" },
+    title: { fontSize: "32px", fontWeight: 900, color: "#1D1D1F", fontFamily: "'Outfit', sans-serif", letterSpacing: "-1px", marginBottom: "8px" },
+    subtitle: { color: "#94A3B8", fontSize: "16px", fontWeight: 500 },
+    
+    perkGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px", marginBottom: "48px" },
+    perkCard: { background: "#fff", border: "1px solid #E2E8F0", borderRadius: "32px", padding: "32px", boxShadow: "0 4px 12px rgba(0,0,0,0.02)", transition: "all 0.3s" },
+    perkValue: { fontSize: "48px", fontWeight: 900, color: "#0055FF", fontFamily: "'Outfit', sans-serif", letterSpacing: "-2px", marginBottom: "12px", display: "block" },
+    perkLabel: { fontSize: "16px", fontWeight: 800, color: "#1D1D1F", marginBottom: "8px", display: "block" },
+    perkDesc: { fontSize: "13px", color: "#64748B", lineHeight: 1.6, fontWeight: 500 },
+    
+    trackerCard: { background: "#1D1D1F", borderRadius: "32px", padding: "40px", color: "#fff", marginBottom: "48px", position: "relative", overflow: "hidden" },
+    trackerHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" },
+    trackerTitle: { fontSize: "18px", fontWeight: 800, letterSpacing: "-0.5px" },
+    trackerStats: { fontSize: "18px", fontWeight: 900, color: "#F5A623" },
+    progressBar: { height: "12px", background: "rgba(255,255,255,0.1)", borderRadius: "100px", overflow: "hidden" },
+    progressFill: { height: "100%", background: "linear-gradient(90deg, #0055FF, #00AAFF)", borderRadius: "100px", boxShadow: "0 0 20px rgba(0, 85, 255, 0.5)" },
+    
+    claimCard: { background: "#fff", border: "1px solid #0055FF", borderRadius: "32px", padding: "48px", boxShadow: "0 24px 48px -12px rgba(0,85,255,0.1)", textAlign: "center" },
+    claimTitle: { fontSize: "24px", fontWeight: 900, color: "#1D1D1F", marginBottom: "12px", fontFamily: "'Outfit', sans-serif" },
+    claimDesc: { fontSize: "15px", color: "#64748B", marginBottom: "32px", maxWidth: "500px", margin: "0 auto 32px", lineHeight: 1.6 },
+    
+    form: { display: "flex", gap: "12px", maxWidth: "500px", margin: "0 auto" },
+    input: { flex: 1, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: "16px", padding: "16px 20px", fontSize: "14px", fontWeight: 600, outline: "none", transition: "all 0.2s" },
+    btn: { background: "#0055FF", color: "#fff", border: "none", borderRadius: "16px", padding: "16px 32px", fontWeight: 800, cursor: "pointer", transition: "all 0.2s", textTransform: "uppercase", letterSpacing: "1px", fontSize: "12px" },
+    
+    successCard: { textAlign: "center", padding: "48px", background: "rgba(16,185,129,0.05)", borderRadius: "32px", border: "1px solid rgba(16,185,129,0.1)" }
+  };
+
   return (
-    <div style={{ padding: "32px 36px", maxWidth: 760, margin: "0 auto" }}>
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ color: "#fff", fontSize: 26, fontWeight: 800, margin: "0 0 6px" }}>Founding Partner Programme</h1>
-        <p style={{ color: C.silver, fontSize: 14, margin: 0 }}>Exclusive access for the first 100 companies on Worqit</p>
+    <div style={S.container}>
+      <div style={S.header}>
+        <h1 style={S.title}>Founding Partner Programme</h1>
+        <p style={S.subtitle}>Exclusive strategic incentives for the first 100 visionary organizations.</p>
       </div>
 
-      {/* Status badge if already a founder */}
       {isFounder && (
-        <div style={{ background: "rgba(255,170,0,.1)", border: "1px solid rgba(255,170,0,.3)", borderRadius: 16, padding: "20px 24px", marginBottom: 24, display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ fontSize: 36 }}>🏆</div>
-          <div>
-            <div style={{ color: "#FFAA00", fontWeight: 800, fontSize: 18, marginBottom: 4 }}>You are a Founding Partner</div>
-            <div style={{ color: C.silver, fontSize: 14 }}>Your company has been confirmed as one of the Founding 100. All perks are active on your account.</div>
+        <div style={{ ...S.trackerCard, background: "linear-gradient(135deg, #F5A623, #D97706)", marginBottom: "48px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+            <span style={{ fontSize: "48px" }}>🏆</span>
+            <div>
+              <h2 style={{ fontSize: "24px", fontWeight: 900, color: "#fff", margin: 0 }}>Confirmed Founding Partner</h2>
+              <p style={{ color: "rgba(255,255,255,0.9)", fontSize: "14px", fontWeight: 600, marginTop: "4px" }}>Your company has secured elite status. All perks are permanently active.</p>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Perks */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 28 }}>
+      <div style={S.perkGrid}>
         {perks.map(p => (
-          <div key={p.n} style={{ background: C.ink2, border: `1px solid ${C.line}`, borderRadius: 16, padding: "24px 20px" }}>
-            <div style={{ fontSize: 36, fontWeight: 800, background: C.gtext, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", letterSpacing: -1, lineHeight: 1, marginBottom: 6 }}>{p.n}</div>
-            <div style={{ color: "#fff", fontWeight: 700, fontSize: 14, marginBottom: 8 }}>{p.label}</div>
-            <div style={{ color: C.silver, fontSize: 13, lineHeight: 1.6 }}>{p.desc}</div>
+          <div key={p.n} style={S.perkCard} onMouseEnter={e => e.currentTarget.style.transform = "translateY(-4px)"} onMouseLeave={e => e.currentTarget.style.transform = "none"}>
+            <span style={S.perkValue}>{p.n}</span>
+            <span style={S.perkLabel}>{p.label}</span>
+            <p style={S.perkDesc}>{p.desc}</p>
           </div>
         ))}
       </div>
 
-      {/* Spot tracker */}
-      <div style={{ background: C.ink2, border: `1px solid ${C.line}`, borderRadius: 14, padding: "20px 24px", marginBottom: 24 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <span style={{ color: "#fff", fontWeight: 700 }}>Spots Claimed</span>
-          <span style={{ color: C.cyan, fontWeight: 800 }}>23 of 100</span>
+      <div style={S.trackerCard}>
+        <div style={{ position: "absolute", top: 0, right: 0, width: "200px", height: "200px", background: "rgba(0,85,255,0.1)", borderRadius: "50%", marginRight: "-100px", marginTop: "-100px" }} />
+        <div style={S.trackerHeader}>
+          <span style={S.trackerTitle}>Programme Maturity</span>
+          <span style={S.trackerStats}>23 / 100 Spots Claimed</span>
         </div>
-        <div style={{ background: "rgba(255,255,255,.08)", borderRadius: 100, height: 8, overflow: "hidden" }}>
-          <div style={{ width: "23%", height: "100%", background: C.grad, borderRadius: 100 }} />
+        <div style={S.progressBar}>
+          <div style={{ ...S.progressFill, width: "23%" }} />
         </div>
-        <div style={{ color: C.silver, fontSize: 12, marginTop: 8 }}>77 spots remaining — closes permanently when full</div>
+        <p style={{ fontSize: "12px", color: "#94A3B8", fontWeight: 700, marginTop: "16px", textTransform: "uppercase", letterSpacing: "1px" }}>77 Strategic Openings Remaining</p>
       </div>
 
-      {/* Claim form */}
       {!isFounder && !submitted && (
-        <div style={{ background: "linear-gradient(135deg,rgba(0,53,204,.15),rgba(0,170,255,.05))", border: "1px solid rgba(26,111,232,.25)", borderRadius: 18, padding: "28px 28px" }}>
-          <h2 style={{ color: "#fff", fontWeight: 800, fontSize: 20, margin: "0 0 8px" }}>Claim Your Founding Spot</h2>
-          <p style={{ color: C.silver, fontSize: 14, margin: "0 0 20px", lineHeight: 1.6 }}>Submit your company email and our team will confirm your Founding Partner status within 24 hours.</p>
-          {err && <div style={{ background: "rgba(220,50,50,.1)", border: "1px solid rgba(220,50,50,.3)", borderRadius: 8, padding: "10px 14px", color: "#FC8181", fontSize: 13, marginBottom: 14 }}>{err}</div>}
-          <form onSubmit={handleClaim} style={{ display: "flex", gap: 10 }}>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Your company email" required
-              style={{ flex: 1, background: "rgba(255,255,255,.06)", border: `1px solid ${C.line}`, borderRadius: 10, padding: "12px 16px", color: "#fff", fontSize: 14, fontFamily: C.font, outline: "none" }} />
-            <button type="submit" disabled={loading} style={{ background: C.grad, border: "none", borderRadius: 10, padding: "12px 24px", color: "#fff", fontWeight: 700, fontSize: 14, cursor: loading ? "default" : "pointer", fontFamily: C.font, whiteSpace: "nowrap" }}>
-              {loading ? "Submitting…" : "Claim Spot"}
+        <div style={S.claimCard}>
+          <h2 style={S.claimTitle}>Claim Your Founding Spot</h2>
+          <p style={S.claimDesc}>Submit your organization's interest to lock in lifetime benefits and strategic priority access.</p>
+          
+          {err && <div style={{ color: "#EF4444", fontSize: "13px", fontWeight: 700, marginBottom: "16px" }}>{err}</div>}
+          
+          <form onSubmit={handleClaim} style={S.form}>
+            <input 
+              type="email" 
+              value={email} 
+              onChange={e => setEmail(e.target.value)} 
+              placeholder="Corporate Email Address" 
+              required 
+              style={S.input}
+              onFocus={e => e.target.style.borderColor = "#0055FF"}
+              onBlur={e => e.target.style.borderColor = "#E2E8F0"}
+            />
+            <button type="submit" disabled={loading} style={S.btn}>
+              {loading ? "Processing..." : "Secure Spot"}
             </button>
           </form>
         </div>
       )}
 
       {submitted && (
-        <div style={{ background: "rgba(0,200,100,.08)", border: "1px solid rgba(0,200,100,.3)", borderRadius: 14, padding: "24px", textAlign: "center" }}>
-          <div style={{ fontSize: 32, marginBottom: 10 }}>🎉</div>
-          <div style={{ color: "#00C864", fontWeight: 800, fontSize: 18, marginBottom: 6 }}>Spot Claimed!</div>
-          <div style={{ color: C.silver, fontSize: 14 }}>Our team will confirm your Founding Partner status within 24 hours.</div>
+        <div style={S.successCard}>
+          <span style={{ fontSize: "48px", display: "block", marginBottom: "16px" }}>🎉</span>
+          <h2 style={{ fontSize: "24px", fontWeight: 900, color: "#10B981", marginBottom: "8px" }}>Interest Registered</h2>
+          <p style={{ color: "#64748B", fontWeight: 600 }}>Our strategic team will verify your organization within 24 hours.</p>
         </div>
       )}
     </div>
   );
 }
+

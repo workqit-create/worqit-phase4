@@ -50,10 +50,10 @@ export default function JobAlerts() {
                 ...alertSettings,
                 updatedAt: new Date().toISOString()
             }, { merge: true });
-            showToast("Alert settings saved!");
+            showToast("Strategic parameters updated.");
         } catch (err) {
             console.error(err);
-            showToast("Failed to save settings.");
+            showToast("Failed to sync parameters.");
         }
         setSaving(false);
     };
@@ -102,108 +102,107 @@ export default function JobAlerts() {
     }
 
     const S = {
-        container: { padding: "40px", color: "#fff", fontFamily: C.font, maxWidth: 800, margin: "0 auto" },
-        header: { fontSize: 32, fontWeight: 800, marginBottom: 8 },
-        sub: { color: C.silver, fontSize: 16, marginBottom: 40 },
-        card: { background: C.ink2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 32, marginBottom: 24 },
-        inputGroup: { marginBottom: 24 },
-        label: { display: "block", fontSize: 13, fontWeight: 700, color: C.silver, marginBottom: 8, letterSpacing: 1, textTransform: "uppercase" },
-        inputWrap: { display: "flex", gap: 8 },
-        input: { flex: 1, background: "rgba(255,255,255,.05)", border: `1px solid ${C.line}`, borderRadius: 8, padding: "12px 16px", color: "#fff", fontSize: 15, outline: "none" },
-        btn: { background: "rgba(255,255,255,.1)", border: "none", borderRadius: 8, padding: "0 20px", color: "#fff", fontWeight: 600, cursor: "pointer" },
-        chipList: { display: "flex", flexWrap: "wrap", gap: 10, marginTop: 12 },
-        chip: { background: "rgba(26,111,232,.1)", border: "1px solid rgba(26,111,232,.3)", borderRadius: 100, padding: "6px 14px", fontSize: 13, color: C.blue, display: "flex", alignItems: "center", gap: 6 },
-        chipRemove: { cursor: "pointer", opacity: 0.6, fontSize: 16, lineHeight: 1 },
-        slider: { width: "100%", accentColor: C.blue, marginTop: 12 }
+        container: { maxWidth: "900px", margin: "0 auto", fontFamily: C.font, color: "#1D1D1F" },
+        header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "48px" },
+        title: { fontSize: "32px", fontWeight: 900, color: "#1D1D1F", fontFamily: "'Outfit', sans-serif", letterSpacing: "-1px", marginBottom: "8px" },
+        subtitle: { color: "#94A3B8", fontSize: "16px", fontWeight: 500 },
+        
+        card: { background: "#fff", border: "1px solid #E2E8F0", borderRadius: "32px", padding: "40px", boxShadow: "0 24px 48px -12px rgba(0,0,0,0.05)", marginBottom: "32px" },
+        sectionTitle: { fontSize: "11px", fontWeight: 900, color: "#64748B", textTransform: "uppercase", letterSpacing: "2px", marginBottom: "24px", display: "flex", alignItems: "center", gap: "8px" },
+        
+        inputRow: { display: "flex", gap: "12px", marginBottom: "16px" },
+        input: { flex: 1, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: "16px", padding: "16px 20px", fontSize: "14px", fontWeight: 600, color: "#1D1D1F", outline: "none", transition: "all 0.2s" },
+        addBtn: { background: "#1D1D1F", color: "#fff", border: "none", borderRadius: "14px", padding: "0 24px", fontWeight: 800, fontSize: "12px", cursor: "pointer", textTransform: "uppercase", letterSpacing: "1px" },
+        
+        chipList: { display: "flex", flexWrap: "wrap", gap: "10px" },
+        chip: { background: "rgba(0,85,255,0.06)", border: "1px solid rgba(0,85,255,0.1)", borderRadius: "12px", padding: "8px 16px", fontSize: "13px", color: "#0055FF", fontWeight: 800, display: "flex", alignItems: "center", gap: "8px" },
+        chipRemove: { cursor: "pointer", opacity: 0.5, fontSize: "18px", lineHeight: 1, "&:hover": { opacity: 1 } },
+        
+        sliderContainer: { marginTop: "40px" },
+        sliderHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "16px" },
+        scoreDisplay: { fontSize: "32px", fontWeight: 900, color: "#0055FF", fontFamily: "'Outfit', sans-serif" },
+        slider: { width: "100%", height: "6px", background: "#F1F5F9", borderRadius: "3px", appearance: "none", outline: "none", cursor: "pointer", accentColor: "#0055FF" },
+        
+        toggleBtn: (active) => ({
+            background: active ? "#0055FF" : "#F1F5F9",
+            color: active ? "#fff" : "#64748B",
+            border: "none", borderRadius: "16px", padding: "12px 24px",
+            fontWeight: 800, fontSize: "13px", cursor: "pointer",
+            display: "flex", alignItems: "center", gap: "10px",
+            transition: "all 0.2s", boxShadow: active ? "0 12px 24px rgba(0,85,255,0.2)" : "none"
+        }),
+        
+        saveBtn: { width: "100%", background: "#1D1D1F", color: "#fff", border: "none", padding: "20px", borderRadius: "20px", fontWeight: 800, fontSize: "14px", cursor: "pointer", textTransform: "uppercase", letterSpacing: "2px", boxShadow: "0 24px 48px -12px rgba(0,0,0,0.1)" },
+        
+        toast: { position: "fixed", bottom: "40px", right: "40px", zIndex: 1000, background: "#1D1D1F", color: "#fff", padding: "16px 32px", borderRadius: "16px", fontWeight: 800, fontSize: "14px", boxShadow: "0 24px 48px rgba(0,0,0,0.2)" }
     };
 
     if (loading) return null;
 
     return (
         <div style={S.container}>
-            {toast && (
-                <div style={{ position: "fixed", bottom: 28, right: 28, zIndex: 9999, background: C.ink2, border: `1px solid ${C.line}`, borderRadius: 12, padding: "14px 22px", color: "#fff", fontWeight: 600, fontSize: 14 }}>
-                    {toast}
-                </div>
-            )}
+            {toast && <div style={S.toast}>{toast}</div>}
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 40 }}>
+            <div style={S.header}>
                 <div>
-                    <h1 style={S.header}>Job Alerts & Matches</h1>
-                    <p style={{ color: C.silver, fontSize: 16 }}>Get notified when a highly relevant job is posted.</p>
+                    <h1 style={S.title}>Strategic Alerts</h1>
+                    <p style={S.subtitle}>Define your mission parameters for autonomous job matching.</p>
                 </div>
-                <button
-                    onClick={toggleActive}
-                    style={{
-                        background: alertSettings.active ? "rgba(46,204,113,.1)" : "rgba(255,255,255,.05)",
-                        border: `1px solid ${alertSettings.active ? "rgba(46,204,113,.4)" : C.line}`,
-                        color: alertSettings.active ? C.green : C.silver,
-                        padding: "12px 20px", borderRadius: 10, fontWeight: 700, fontSize: 15, cursor: "pointer",
-                        display: "flex", alignItems: "center", gap: 8, transition: "all .2s"
-                    }}
-                >
+                <button onClick={toggleActive} style={S.toggleBtn(alertSettings.active)}>
                     {alertSettings.active ? <Bell size={18} /> : <BellOff size={18} />}
-                    {alertSettings.active ? "Alerts Active" : "Alerts Paused"}
+                    {alertSettings.active ? "Monitoring Active" : "Monitoring Paused"}
                 </button>
             </div>
 
-            <div style={{ ...S.card, opacity: alertSettings.active ? 1 : 0.5, pointerEvents: alertSettings.active ? "auto" : "none", transition: "opacity .3s" }}>
-
-                {/* Keywords */}
-                <div style={S.inputGroup}>
-                    <label style={S.label}><Search size={14} style={{ display: "inline", verticalAlign: "bottom", marginRight: 6 }} /> Keywords / Job Titles</label>
-                    <form onSubmit={handleAddKeyword} style={S.inputWrap}>
-                        <input
-                            style={S.input}
-                            placeholder="e.g. React, UX Designer"
-                            value={keywordInput}
-                            onChange={e => setKeywordInput(e.target.value)}
-                        />
-                        <button type="submit" style={S.btn}>Add</button>
-                    </form>
-                    <div style={S.chipList}>
-                        {alertSettings.keywords.map((kw, i) => (
-                            <span key={i} style={S.chip}>
-                                {kw} <span style={S.chipRemove} onClick={() => removeKeyword(i)}>×</span>
-                            </span>
-                        ))}
-                        {alertSettings.keywords.length === 0 && <span style={{ color: C.silver, fontSize: 13 }}>No keywords set.</span>}
-                    </div>
+            <div style={{ ...S.card, opacity: alertSettings.active ? 1 : 0.6, transition: "all 0.3s" }}>
+                <div style={S.sectionTitle}><Search size={14} /> Strategic Keywords</div>
+                <form onSubmit={handleAddKeyword} style={S.inputRow}>
+                    <input
+                        style={S.input}
+                        placeholder="e.g. Lead Designer, Strategy Consultant..."
+                        value={keywordInput}
+                        onChange={e => setKeywordInput(e.target.value)}
+                    />
+                    <button type="submit" style={S.addBtn}>Add Parameter</button>
+                </form>
+                <div style={S.chipList}>
+                    {alertSettings.keywords.map((kw, i) => (
+                        <span key={i} style={S.chip}>
+                            {kw} <span style={S.chipRemove} onClick={() => removeKeyword(i)}>×</span>
+                        </span>
+                    ))}
                 </div>
 
-                <hr style={{ border: 0, borderTop: `1px solid ${C.line}`, margin: "32px 0" }} />
+                <div style={{ height: "1px", background: "#F1F5F9", margin: "40px 0" }} />
 
-                {/* Locations */}
-                <div style={S.inputGroup}>
-                    <label style={S.label}><MapPin size={14} style={{ display: "inline", verticalAlign: "bottom", marginRight: 6 }} /> Locations</label>
-                    <form onSubmit={handleAddLocation} style={S.inputWrap}>
-                        <input
-                            style={S.input}
-                            placeholder="e.g. Dubai, Remote"
-                            value={locationInput}
-                            onChange={e => setLocationInput(e.target.value)}
-                        />
-                        <button type="submit" style={S.btn}>Add</button>
-                    </form>
-                    <div style={S.chipList}>
-                        {alertSettings.locations.map((loc, i) => (
-                            <span key={i} style={S.chip}>
-                                {loc} <span style={S.chipRemove} onClick={() => removeLocation(i)}>×</span>
-                            </span>
-                        ))}
-                        {alertSettings.locations.length === 0 && <span style={{ color: C.silver, fontSize: 13 }}>Any location.</span>}
-                    </div>
+                <div style={S.sectionTitle}><MapPin size={14} /> Target Jurisdictions</div>
+                <form onSubmit={handleAddLocation} style={S.inputRow}>
+                    <input
+                        style={S.input}
+                        placeholder="e.g. Dubai, Abu Dhabi, Remote..."
+                        value={locationInput}
+                        onChange={e => setLocationInput(e.target.value)}
+                    />
+                    <button type="submit" style={S.addBtn}>Add Location</button>
+                </form>
+                <div style={S.chipList}>
+                    {alertSettings.locations.map((loc, i) => (
+                        <span key={i} style={S.chip}>
+                            {loc} <span style={S.chipRemove} onClick={() => removeLocation(i)}>×</span>
+                        </span>
+                    ))}
                 </div>
 
-                <hr style={{ border: 0, borderTop: `1px solid ${C.line}`, margin: "32px 0" }} />
+                <div style={{ height: "1px", background: "#F1F5F9", margin: "40px 0" }} />
 
-                {/* Minimum Match Score */}
-                <div style={S.inputGroup}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <label style={{ ...S.label, marginBottom: 0 }}><Briefcase size={14} style={{ display: "inline", verticalAlign: "bottom", marginRight: 6 }} /> Minimum AI Match Score</label>
-                        <span style={{ fontWeight: 800, fontSize: 18, color: C.blue }}>{alertSettings.minMatchScore}%</span>
+                <div style={S.sliderContainer}>
+                    <div style={S.sliderHeader}>
+                        <div>
+                            <div style={S.sectionTitle}><Briefcase size={14} /> AI Match Sensitivity</div>
+                            <p style={{ color: "#94A3B8", fontSize: "14px", fontWeight: 500, margin: 0 }}>Minimum profile relevance score for alerts.</p>
+                        </div>
+                        <div style={S.scoreDisplay}>{alertSettings.minMatchScore}%</div>
                     </div>
-                    <p style={{ color: C.silver, fontSize: 13, marginTop: 6 }}>Only notify me when a job matches my profile by at least this percentage.</p>
                     <input
                         type="range"
                         min="30" max="95" step="5"
@@ -212,21 +211,11 @@ export default function JobAlerts() {
                         style={S.slider}
                     />
                 </div>
-
             </div>
 
-            <button
-                onClick={handleSave}
-                disabled={saving}
-                style={{
-                    background: C.grad, border: "none", borderRadius: 10, padding: "14px 32px",
-                    color: "#fff", fontWeight: 700, fontSize: 16, cursor: saving ? "default" : "pointer",
-                    width: "100%", boxShadow: "0 8px 24px rgba(26,111,232,.3)"
-                }}
-            >
-                {saving ? "Saving..." : "Save Config"}
+            <button onClick={handleSave} disabled={saving} style={S.saveBtn}>
+                {saving ? "Deploying Parameters..." : "Publish Match Config"}
             </button>
-
         </div>
     );
 }

@@ -8,11 +8,51 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/logo192.png" />
     <title>Worqit — The Future of Hiring</title>
-  </head><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#0055FF",
+              "secondary": "#00AAFF",
+              "luxury-dark": "#1D1D1F",
+              "luxury-slate": "#6E6E73",
+              "premium-gold": "#F5A623",
+              "gold-deep": "#D97706",
+            },
+            fontFamily: {
+              "sans": ["Plus Jakarta Sans", "sans-serif"],
+              "display": ["Outfit", "sans-serif"],
+            },
+          },
+        },
+      }
+    </script>
     <style>
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { font-family: 'Plus Jakarta Sans', sans-serif; background: #060C1A; }
+      body { font-family: 'Plus Jakarta Sans', sans-serif; background: #fcfcfd; color: #1D1D1F; -webkit-font-smoothing: antialiased; }
       #root { min-height: 100vh; }
+      
+      /* Global Ultra-Premium Utility Classes */
+      .font-display { font-family: 'Outfit', sans-serif; }
+      .premium-mesh-bg {
+        background-color: #fcfcfd;
+        background-image: 
+          radial-gradient(at 0% 0%, rgba(245, 166, 35, 0.03) 0px, transparent 50%),
+          radial-gradient(at 100% 0%, rgba(59, 130, 246, 0.03) 0px, transparent 50%),
+          radial-gradient(at 100% 100%, rgba(245, 166, 35, 0.03) 0px, transparent 50%),
+          radial-gradient(at 0% 100%, rgba(59, 130, 246, 0.03) 0px, transparent 50%);
+      }
+      .luxury-shadow { box-shadow: 0 20px 50px -12px rgba(0,0,0,0.06); }
+      .glass-premium {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.04), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+      }
     </style>
   </head>
   <body>

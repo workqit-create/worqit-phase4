@@ -66,133 +66,177 @@ export default function HirerProfile() {
 
   const initials = (form.companyName || form.name || "W").charAt(0).toUpperCase();
 
-  // ── VIEW MODE ──────────────────────────────────────────
+  const S = {
+    container: { maxWidth: "900px", margin: "0 auto", fontFamily: C.font, color: "#1D1D1F" },
+    header: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "48px" },
+    title: { fontSize: "32px", fontWeight: 900, color: "#1D1D1F", fontFamily: "'Outfit', sans-serif", letterSpacing: "-1px", marginBottom: "8px" },
+    subtitle: { color: "#94A3B8", fontSize: "16px", fontWeight: 500 },
+    
+    // VIEW MODE STYLES
+    profileCard: { background: "#fff", borderRadius: "40px", border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 24px 48px -12px rgba(0,0,0,0.05)" },
+    banner: { height: "160px", background: "linear-gradient(135deg, #0055FF, #00AAFF, #0055FF)", position: "relative" },
+    content: { padding: "0 48px 48px", marginTop: "-60px", position: "relative" },
+    logoWrapper: { position: "relative", width: "120px", height: "120px", marginBottom: "24px" },
+    logo: { width: "120px", height: "120px", borderRadius: "32px", background: "#fff", border: "6px solid #fff", boxShadow: "0 12px 24px rgba(0,0,0,0.1)", objectFit: "cover", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "48px", fontWeight: 900, color: "#0055FF" },
+    cameraBtn: { position: "absolute", bottom: "8px", right: "8px", width: "36px", height: "36px", borderRadius: "12px", background: "#1D1D1F", color: "#fff", border: "4px solid #fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" },
+    
+    companyName: { fontSize: "28px", fontWeight: 900, color: "#1D1D1F", marginBottom: "8px", fontFamily: "'Outfit', sans-serif" },
+    metaRow: { display: "flex", gap: "24px", color: "#64748B", fontSize: "14px", fontWeight: 600, marginBottom: "32px" },
+    
+    sectionTitle: { fontSize: "11px", fontWeight: 900, color: "#0055FF", textTransform: "uppercase", letterSpacing: "2px", marginBottom: "16px" },
+    bio: { fontSize: "15px", lineHeight: "1.8", color: "#475569", marginBottom: "40px", fontWeight: 500 },
+    
+    linkBtn: { display: "inline-flex", alignItems: "center", gap: "10px", padding: "12px 24px", borderRadius: "16px", background: "#F1F5F9", color: "#1D1D1F", textDecoration: "none", fontSize: "13px", fontWeight: 800, transition: "all 0.2s" },
+    editBtn: { background: "#1D1D1F", color: "#fff", border: "none", borderRadius: "14px", padding: "12px 24px", fontWeight: 800, fontSize: "12px", cursor: "pointer", textTransform: "uppercase", letterSpacing: "1px", transition: "all 0.2s" },
+
+    // EDIT MODE STYLES
+    formGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" },
+    fieldCard: { background: "#fff", border: "1px solid #E2E8F0", borderRadius: "24px", padding: "32px", marginBottom: "24px" },
+    label: { display: "block", fontSize: "11px", color: "#94A3B8", marginBottom: "8px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1px" },
+    input: { width: "100%", background: "#fff", border: "1px solid #E2E8F0", borderRadius: "14px", padding: "12px 16px", fontSize: "14px", color: "#1D1D1F", outline: "none", transition: "all 0.2s", boxSizing: "border-box", fontWeight: 600 },
+    textarea: { width: "100%", background: "#fff", border: "1px solid #E2E8F0", borderRadius: "18px", padding: "16px", fontSize: "14px", color: "#1D1D1F", outline: "none", transition: "all 0.2s", boxSizing: "border-box", fontWeight: 600, minHeight: "120px", resize: "vertical" },
+    saveBtn: { width: "100%", background: "#0055FF", color: "#fff", border: "none", padding: "18px", borderRadius: "16px", fontWeight: 800, cursor: "pointer", fontSize: "13px", textTransform: "uppercase", letterSpacing: "1.5px", boxShadow: "0 12px 24px rgba(0,85,255,0.2)" }
+  };
+
   if (mode === "view") {
     return (
-      <div style={{ padding: "32px 36px", maxWidth: 720, margin: "0 auto" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
+      <div style={S.container}>
+        <div style={S.header}>
           <div>
-            <h1 style={{ color: "#fff", fontSize: 26, fontWeight: 800, margin: 0 }}>Company Profile</h1>
-            <p style={{ color: C.silver, fontSize: 13, marginTop: 4 }}>What candidates see when you reach out to them</p>
+            <h1 style={S.title}>Organization Studio</h1>
+            <p style={S.subtitle}>Manage your elite brand presence in the network.</p>
           </div>
-          <button onClick={() => setMode("edit")} style={{ background: "rgba(26,111,232,.1)", border: "1px solid rgba(26,111,232,.3)", borderRadius: 8, padding: "9px 20px", color: C.cyan, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: C.font }}>✏️ Edit Profile</button>
+          <button onClick={() => setMode("edit")} style={S.editBtn}>✏️ Refine Profile</button>
         </div>
 
-        <div style={{ background: C.ink2, border: "1px solid rgba(26,111,232,.2)", borderRadius: 20, overflow: "hidden", boxShadow: "0 8px 40px rgba(0,0,0,.3)" }}>
-          <div style={{ height: 90, background: "linear-gradient(135deg,#0035CC,#1A6FE8,#00AAFF)" }} />
-          <div style={{ padding: "0 28px 28px", marginTop: -36 }}>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 16, marginBottom: 20 }}>
-              <div style={{ position: "relative", flexShrink: 0 }}>
-                {logoURL
-                  ? <img src={logoURL} alt="Logo" style={{ width: 80, height: 80, borderRadius: 14, objectFit: "cover", border: "3px solid #0A1228" }} />
-                  : <div style={{ width: 80, height: 80, borderRadius: 14, background: C.grad, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 30, color: "#fff", border: "3px solid #0A1228" }}>{initials}</div>
-                }
-                <button onClick={() => fileRef.current?.click()} style={{ position: "absolute", bottom: -4, right: -4, width: 24, height: 24, borderRadius: "50%", background: C.royal, border: "2px solid #0A1228", color: "#fff", fontSize: 11, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} title="Change logo">📷</button>
-                <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleLogo} />
+        <div style={S.profileCard}>
+          <div style={S.banner}>
+            {userProfile?.isFounding100 && (
+              <div style={{ position: "absolute", top: "24px", right: "24px", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.3)", borderRadius: "100px", padding: "8px 20px", display: "flex", alignItems: "center", gap: "10px", color: "#fff" }}>
+                <span style={{ fontSize: "16px" }}>🏆</span>
+                <span style={{ fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "1.5px" }}>Founding Partner</span>
               </div>
-              <div style={{ flex: 1, paddingBottom: 4 }}>
-                <h2 style={{ color: "#fff", fontWeight: 800, fontSize: 22, margin: "0 0 4px" }}>{form.companyName || "Your Company"}</h2>
-                <div style={{ color: C.silver, fontSize: 13, display: "flex", gap: 14, flexWrap: "wrap" }}>
-                  {form.industry && <span>🏭 {form.industry}</span>}
-                  {form.companySize && <span>👥 {form.companySize} employees</span>}
-                  {form.location && <span>📍 {form.location}</span>}
-                </div>
-              </div>
-              {userProfile?.isFounding100 && (
-                <div style={{ background: "rgba(255,170,0,.1)", border: "1px solid rgba(255,170,0,.3)", borderRadius: 10, padding: "8px 14px", textAlign: "center", flexShrink: 0 }}>
-                  <div style={{ fontSize: 18 }}>🏆</div>
-                  <div style={{ color: "#FFAA00", fontWeight: 800, fontSize: 11 }}>Founding 100</div>
-                </div>
+            )}
+          </div>
+          
+          <div style={S.content}>
+            <div style={S.logoWrapper}>
+              {logoURL ? (
+                <img src={logoURL} alt="Logo" style={S.logo} />
+              ) : (
+                <div style={S.logo}>{initials}</div>
               )}
+              <button onClick={() => fileRef.current?.click()} style={S.cameraBtn} title="Update Brand Logo">
+                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>photo_camera</span>
+              </button>
+              <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleLogo} />
             </div>
 
-            {form.companyBio && (
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ color: C.cyan, fontSize: 11, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 8 }}>About</div>
-                <p style={{ color: C.text, fontSize: 14, lineHeight: 1.7, margin: 0 }}>{form.companyBio}</p>
-              </div>
-            )}
+            <h2 style={S.companyName}>{form.companyName || "Organization Identity"}</h2>
+            <div style={S.metaRow}>
+              {form.industry && <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><span className="material-symbols-outlined" style={{ fontSize: "18px" }}>factory</span> {form.industry}</span>}
+              {form.companySize && <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><span className="material-symbols-outlined" style={{ fontSize: "18px" }}>groups</span> {form.companySize} Employees</span>}
+              {form.location && <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><span className="material-symbols-outlined" style={{ fontSize: "18px" }}>location_on</span> {form.location}</span>}
+            </div>
 
-            {(form.website || form.linkedin) && (
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {form.website && <a href={form.website} target="_blank" rel="noreferrer" style={{ background: "rgba(26,111,232,.08)", border: "1px solid rgba(26,111,232,.2)", borderRadius: 8, padding: "7px 14px", color: C.cyan, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>🌐 Website</a>}
-                {form.linkedin && <a href={form.linkedin} target="_blank" rel="noreferrer" style={{ background: "rgba(26,111,232,.08)", border: "1px solid rgba(26,111,232,.2)", borderRadius: 8, padding: "7px 14px", color: C.cyan, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>🔗 LinkedIn</a>}
-              </div>
-            )}
+            <div style={S.sectionTitle}>Strategic Vision</div>
+            <p style={S.bio}>{form.companyBio || "Define your company's strategic narrative to attract elite talent."}</p>
+
+            <div style={{ display: "flex", gap: "12px" }}>
+              {form.website && (
+                <a href={form.website} target="_blank" rel="noreferrer" style={S.linkBtn} onMouseEnter={e => e.currentTarget.style.background = "#E2E8F0"} onMouseLeave={e => e.currentTarget.style.background = "#F1F5F9"}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>language</span> Official Website
+                </a>
+              )}
+              {form.linkedin && (
+                <a href={form.linkedin} target="_blank" rel="noreferrer" style={S.linkBtn} onMouseEnter={e => e.currentTarget.style.background = "#E2E8F0"} onMouseLeave={e => e.currentTarget.style.background = "#F1F5F9"}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>link</span> LinkedIn Profile
+                </a>
+              )}
+            </div>
           </div>
         </div>
-        {uploading && <div style={{ textAlign: "center", color: C.silver, fontSize: 13, marginTop: 12 }}>Uploading…</div>}
+        {uploading && <div style={{ textAlign: "center", color: "#0055FF", fontSize: "12px", fontWeight: 800, marginTop: "20px", textTransform: "uppercase", letterSpacing: "1px" }}>Deploying Brand Asset...</div>}
       </div>
     );
   }
 
-  // ── EDIT MODE ──────────────────────────────────────────
-  const inp = { background: "rgba(255,255,255,.05)", border: `1px solid ${C.line}`, borderRadius: 8, padding: "11px 14px", color: "#fff", fontSize: 14, fontFamily: C.font, outline: "none", width: "100%", boxSizing: "border-box" };
-
   return (
-    <div style={{ padding: "32px 36px", maxWidth: 720, margin: "0 auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
-        <h1 style={{ color: "#fff", fontSize: 26, fontWeight: 800, margin: 0 }}>Edit Company Profile</h1>
-        {userProfile?.profileComplete && <button onClick={() => setMode("view")} style={{ background: "rgba(255,255,255,.05)", border: `1px solid ${C.line}`, borderRadius: 8, padding: "9px 16px", color: C.silver, fontSize: 13, cursor: "pointer", fontFamily: C.font, fontWeight: 600 }}>← View Profile</button>}
-      </div>
-
-      {/* Logo upload */}
-      <div style={{ background: C.ink2, border: `1px solid ${C.line}`, borderRadius: 14, padding: "20px 22px", marginBottom: 24 }}>
-        <div style={{ color: C.cyan, fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", marginBottom: 14 }}>Company Logo</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          {logoURL ? <img src={logoURL} alt="Logo" style={{ width: 60, height: 60, borderRadius: 12, objectFit: "cover" }} /> : <div style={{ width: 60, height: 60, borderRadius: 12, background: C.grad, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 22, color: "#fff" }}>{initials}</div>}
-          <div>
-            <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{ background: "rgba(26,111,232,.1)", border: "1px solid rgba(26,111,232,.3)", borderRadius: 8, padding: "9px 18px", color: C.cyan, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: C.font }}>{uploading ? "Uploading…" : "Upload Logo"}</button>
-            <p style={{ color: C.silver, fontSize: 12, margin: "6px 0 0" }}>JPG or PNG · Max 5MB</p>
-          </div>
-          <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleLogo} />
+    <div style={S.container}>
+      <div style={S.header}>
+        <div>
+          <h1 style={S.title}>Refine Identity</h1>
+          <p style={S.subtitle}>Update your organization's strategic parameters.</p>
         </div>
+        <button onClick={() => setMode("view")} style={{ ...S.editBtn, background: "#F1F5F9", color: "#64748B" }}>← Discard Changes</button>
       </div>
 
-      {error && <div style={{ background: "rgba(220,50,50,.1)", border: "1px solid rgba(220,50,50,.3)", borderRadius: 10, padding: "12px 18px", color: "#FC8181", fontSize: 14, marginBottom: 18 }}>{error}</div>}
-      {saved && <div style={{ background: "rgba(0,200,100,.1)", border: "1px solid rgba(0,200,100,.3)", borderRadius: 10, padding: "12px 18px", color: "#00C864", fontSize: 14, marginBottom: 18 }}>Saved! Switching to view mode… ✓</div>}
+      {error && <div style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.1)", borderRadius: "16px", padding: "16px 24px", color: "#EF4444", fontSize: "14px", fontWeight: 700, marginBottom: "24px" }}>{error}</div>}
+      {saved && <div style={{ background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.1)", borderRadius: "16px", padding: "16px 24px", color: "#10B981", fontSize: "14px", fontWeight: 700, marginBottom: "24px" }}>✅ Strategic update successful. Deploying...</div>}
 
       <form onSubmit={handleSave}>
-        {[
-          { title: "Contact", fields: [{ l: "Your Name *", k: "name", ph: "Your full name" }] },
-          { title: "Company Details", fields: [
-            { l: "Company Name *", k: "companyName", ph: "Your company name" },
-            { l: "Industry", k: "industry", ph: "e.g. Fintech, Healthcare" },
-            { l: "Location", k: "location", ph: "e.g. Dubai, UAE" },
-          ]},
-          { title: "About", fields: [{ l: "Company Bio", k: "companyBio", ph: "Tell candidates about your company and culture…", multi: true }] },
-          { title: "Links", fields: [
-            { l: "Website", k: "website", ph: "https://yourcompany.com" },
-            { l: "LinkedIn", k: "linkedin", ph: "https://linkedin.com/company/yourcompany" },
-          ]},
-        ].map(({ title, fields }) => (
-          <div key={title} style={{ marginBottom: 24 }}>
-            <div style={{ color: C.cyan, fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase", marginBottom: 12 }}>{title}</div>
-            <div style={{ background: C.ink2, border: `1px solid ${C.line}`, borderRadius: 14, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
-              {/* Company size select in Details section */}
-              {title === "Company Details" && (
-                <div>
-                  <div style={{ color: C.silver, fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Company Size</div>
-                  <select value={form.companySize} onChange={e => setForm(p => ({...p, companySize: e.target.value}))} style={{ ...inp, cursor: "pointer" }}>
-                    <option value="" style={{ background: C.ink2 }}>Select size</option>
-                    {["1–10","11–50","51–200","201–500","501–1000","1000+"].map(s => <option key={s} value={s} style={{ background: C.ink2 }}>{s} employees</option>)}
-                  </select>
-                </div>
-              )}
-              {fields.map(({ l, k, ph, multi }) => (
-                <div key={k}>
-                  <div style={{ color: C.silver, fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{l}</div>
-                  {multi
-                    ? <textarea value={form[k]} onChange={e => setForm(p => ({...p, [k]: e.target.value}))} placeholder={ph} rows={4} style={{ ...inp, resize: "vertical", lineHeight: 1.6 }} onFocus={e => e.target.style.borderColor = "rgba(26,111,232,.5)"} onBlur={e => e.target.style.borderColor = C.line} />
-                    : <input type="text" value={form[k]} onChange={e => setForm(p => ({...p, [k]: e.target.value}))} placeholder={ph} style={inp} onFocus={e => e.target.style.borderColor = "rgba(26,111,232,.5)"} onBlur={e => e.target.style.borderColor = C.line} />
-                  }
-                </div>
-              ))}
+        <div style={S.fieldCard}>
+          <div style={S.sectionTitle}>Identity Assets</div>
+          <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+            {logoURL ? <img src={logoURL} alt="Logo" style={{ width: "80px", height: "80px", borderRadius: "20px", objectFit: "cover" }} /> : <div style={{ width: "80px", height: "80px", borderRadius: "20px", background: "#F1F5F9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "32px", fontWeight: 900, color: "#CBD5E1" }}>{initials}</div>}
+            <div>
+              <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} style={{ ...S.editBtn, padding: "10px 20px" }}>{uploading ? "Uploading..." : "Replace Logo"}</button>
+              <p style={{ color: "#94A3B8", fontSize: "12px", marginTop: "8px", fontWeight: 600 }}>Recommended: 400x400px JPG or PNG</p>
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleLogo} />
+          </div>
+        </div>
+
+        <div style={S.fieldCard}>
+          <div style={S.sectionTitle}>Primary Parameters</div>
+          <div style={S.formGrid}>
+            <div>
+              <label style={S.label}>Organization Name</label>
+              <input type="text" style={S.input} value={form.companyName} onChange={e => setForm({...form, companyName: e.target.value})} required placeholder="e.g. Acme Strategic" />
+            </div>
+            <div>
+              <label style={S.label}>Industry Sector</label>
+              <input type="text" style={S.input} value={form.industry} onChange={e => setForm({...form, industry: e.target.value})} placeholder="e.g. Financial Technology" />
+            </div>
+            <div>
+              <label style={S.label}>Organization Size</label>
+              <select style={{ ...S.input, cursor: "pointer" }} value={form.companySize} onChange={e => setForm({...form, companySize: e.target.value})}>
+                <option value="">Select Scale</option>
+                {["1–10","11–50","51–200","201–500","501–1000","1000+"].map(s => <option key={s} value={s}>{s} Employees</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={S.label}>Headquarters Location</label>
+              <input type="text" style={S.input} value={form.location} onChange={e => setForm({...form, location: e.target.value})} placeholder="e.g. Dubai, UAE" />
             </div>
           </div>
-        ))}
-        <button type="submit" disabled={saving} style={{ background: saving ? "rgba(26,111,232,.5)" : C.grad, border: "none", borderRadius: 10, padding: "13px 32px", color: "#fff", fontWeight: 700, fontSize: 15, cursor: saving ? "default" : "pointer", fontFamily: C.font, boxShadow: "0 4px 20px rgba(26,111,232,.3)" }}>{saving ? "Saving…" : "Save Profile"}</button>
+        </div>
+
+        <div style={S.fieldCard}>
+          <div style={S.sectionTitle}>Brand Narrative</div>
+          <label style={S.label}>Company Biography</label>
+          <textarea style={S.textarea} value={form.companyBio} onChange={e => setForm({...form, companyBio: e.target.value})} placeholder="Describe your company's mission, culture, and strategic goals..." />
+        </div>
+
+        <div style={S.fieldCard}>
+          <div style={S.sectionTitle}>Strategic Links</div>
+          <div style={S.formGrid}>
+            <div>
+              <label style={S.label}>Corporate Website</label>
+              <input type="text" style={S.input} value={form.website} onChange={e => setForm({...form, website: e.target.value})} placeholder="https://acme.com" />
+            </div>
+            <div>
+              <label style={S.label}>LinkedIn Page</label>
+              <input type="text" style={S.input} value={form.linkedin} onChange={e => setForm({...form, linkedin: e.target.value})} placeholder="https://linkedin.com/company/acme" />
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" disabled={saving} style={{ ...S.saveBtn, opacity: saving ? 0.7 : 1 }}>
+          {saving ? "Deploying Updates..." : "Publish Profile Changes"}
+        </button>
       </form>
     </div>
   );
 }
+

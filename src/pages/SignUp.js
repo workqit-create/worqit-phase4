@@ -1,6 +1,4 @@
 // src/pages/SignUp.js
-// Already connected to AuthContext — no changes needed.
-
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -74,11 +72,17 @@ export default function SignUp() {
             <div style={S.typeGrid}>
               {/* Hirer */}
               <button style={S.typeBtn} onClick={() => chooseType("hirer")}
-                onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(26,111,232,.7)"}
-                onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(26,111,232,.2)"}>
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = "#0055FF";
+                  e.currentTarget.style.background = "rgba(0,85,255,.03)";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = "rgba(0,0,0,.08)";
+                  e.currentTarget.style.background = "#fff";
+                }}>
                 <div style={S.typeIcon}>
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
-                    stroke="#1A6FE8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    stroke="#0055FF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="2" y="7" width="20" height="14" rx="2" />
                     <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
                   </svg>
@@ -90,8 +94,14 @@ export default function SignUp() {
 
               {/* Candidate */}
               <button style={S.typeBtn} onClick={() => chooseType("candidate")}
-                onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(0,170,255,.6)"}
-                onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(26,111,232,.2)"}>
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = "#00AAFF";
+                  e.currentTarget.style.background = "rgba(0,170,255,.03)";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = "rgba(0,0,0,.08)";
+                  e.currentTarget.style.background = "#fff";
+                }}>
                 <div style={S.typeIcon}>
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
                     stroke="#00AAFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -131,7 +141,9 @@ export default function SignUp() {
             {error && <div style={S.error}>{error}</div>}
 
             {/* Google sign up */}
-            <button style={S.googleBtn} onClick={handleGoogle} disabled={loading}>
+            <button style={S.googleBtn} onClick={handleGoogle} disabled={loading}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,.03)"}
+              onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
               <GoogleIcon />
               Continue with Google
             </button>
@@ -146,24 +158,24 @@ export default function SignUp() {
               <Field label="Full Name">
                 <input style={S.input} type="text" placeholder="Your full name"
                   value={name} onChange={e => setName(e.target.value)} required
-                  onFocus={e => e.target.style.borderColor = "rgba(26,111,232,.7)"}
-                  onBlur={e => e.target.style.borderColor = "rgba(255,255,255,.08)"} />
+                  onFocus={e => e.target.style.borderColor = "#0055FF"}
+                  onBlur={e => e.target.style.borderColor = "rgba(0,0,0,.08)"} />
               </Field>
               <Field label="Email Address">
                 <input style={S.input} type="email" placeholder="your@email.com"
                   value={email} onChange={e => setEmail(e.target.value)} required
-                  onFocus={e => e.target.style.borderColor = "rgba(26,111,232,.7)"}
-                  onBlur={e => e.target.style.borderColor = "rgba(255,255,255,.08)"} />
+                  onFocus={e => e.target.style.borderColor = "#0055FF"}
+                  onBlur={e => e.target.style.borderColor = "rgba(0,0,0,.08)"} />
               </Field>
               <Field label="Password">
                 <input style={S.input} type="password" placeholder="Minimum 8 characters"
                   value={password} onChange={e => setPassword(e.target.value)} required
-                  onFocus={e => e.target.style.borderColor = "rgba(26,111,232,.7)"}
-                  onBlur={e => e.target.style.borderColor = "rgba(255,255,255,.08)"} />
+                  onFocus={e => e.target.style.borderColor = "#0055FF"}
+                  onBlur={e => e.target.style.borderColor = "rgba(0,0,0,.08)"} />
               </Field>
               <button style={S.submitBtn} type="submit" disabled={loading}
-                onMouseEnter={e => e.currentTarget.style.opacity = ".88"}
-                onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+                onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
+                onMouseLeave={e => e.currentTarget.style.transform = "none"}>
                 {loading ? "Creating your account..." : "Create Account"}
               </button>
             </form>
@@ -188,7 +200,7 @@ export default function SignUp() {
 function Field({ label, children }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-      <label style={{ fontSize: "11px", fontWeight: 700, color: "#7A90B8", letterSpacing: ".5px", textTransform: "uppercase" }}>
+      <label style={{ fontSize: "11px", fontWeight: 700, color: "#6E6E73", letterSpacing: ".5px", textTransform: "uppercase" }}>
         {label}
       </label>
       {children}
@@ -211,7 +223,7 @@ function GoogleIcon() {
 // ── Styles ──
 const S = {
   page: {
-    minHeight: "100vh", background: "#060C1A",
+    minHeight: "100vh", background: "#FFFFFF",
     display: "flex", alignItems: "center", justifyContent: "center",
     padding: "40px 24px", fontFamily: "'Plus Jakarta Sans',sans-serif",
     position: "relative", overflow: "hidden",
@@ -219,82 +231,82 @@ const S = {
   glow: {
     position: "absolute", top: "-200px", left: "50%", transform: "translateX(-50%)",
     width: "600px", height: "600px", borderRadius: "50%",
-    background: "radial-gradient(circle,rgba(0,53,204,.35) 0%,transparent 70%)",
+    background: "radial-gradient(circle,rgba(0,85,255,.1) 0%,transparent 70%)",
     filter: "blur(80px)", pointerEvents: "none",
   },
   card: {
-    background: "#0A1228", border: "1px solid rgba(26,111,232,.15)",
+    background: "#FFFFFF", border: "1px solid rgba(0,0,0,.08)",
     borderRadius: "24px", padding: "48px", width: "100%", maxWidth: "500px",
-    position: "relative", zIndex: 1, boxShadow: "0 24px 80px rgba(0,53,204,.2)",
+    position: "relative", zIndex: 1, boxShadow: "0 24px 80px rgba(0,0,0,.05)",
   },
   logoWrap: { display: "flex", justifyContent: "center", marginBottom: "32px" },
   logo: {
     height: "64px", width: "auto", objectFit: "contain",
-    filter: "drop-shadow(0 4px 16px rgba(26,111,232,.3))"
+    filter: "drop-shadow(0 4px 16px rgba(0,85,255,.15))"
   },
   h1: {
-    fontWeight: 800, fontSize: "28px", color: "#fff",
+    fontWeight: 800, fontSize: "28px", color: "#1D1D1F",
     marginBottom: "8px", textAlign: "center", letterSpacing: "-1px"
   },
-  sub: { fontSize: "14px", color: "#7A90B8", textAlign: "center", marginBottom: "32px" },
+  sub: { fontSize: "14px", color: "#6E6E73", textAlign: "center", marginBottom: "32px" },
 
   typeGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "28px" },
   typeBtn: {
-    background: "rgba(26,111,232,.07)", border: "1px solid rgba(26,111,232,.2)",
+    background: "#fff", border: "1px solid rgba(0,0,0,.08)",
     borderRadius: "16px", padding: "24px 16px", cursor: "pointer", textAlign: "center",
     display: "flex", flexDirection: "column", alignItems: "center", gap: "10px",
-    transition: "border-color .2s",
+    transition: "all .2s",
   },
   typeIcon: {
     width: "54px", height: "54px", borderRadius: "50%",
-    background: "rgba(26,111,232,.12)",
+    background: "rgba(0,85,255,.05)",
     display: "flex", alignItems: "center", justifyContent: "center",
   },
-  typeName: { fontSize: "14px", fontWeight: 700, color: "#fff" },
-  typeSub: { fontSize: "12px", color: "#7A90B8", lineHeight: 1.5 },
-  typeArrow: { fontSize: "16px", color: "#1A6FE8", fontWeight: 700 },
+  typeName: { fontSize: "14px", fontWeight: 700, color: "#1D1D1F" },
+  typeSub: { fontSize: "12px", color: "#6E6E73", lineHeight: 1.5 },
+  typeArrow: { fontSize: "16px", color: "#0055FF", fontWeight: 700 },
 
   pill: {
     display: "inline-block",
-    background: "linear-gradient(135deg,rgba(0,170,255,.12),rgba(0,53,204,.12))",
-    border: "1px solid rgba(26,111,232,.35)", borderRadius: "100px",
+    background: "rgba(0,85,255,.05)",
+    border: "1px solid rgba(0,85,255,.2)", borderRadius: "100px",
     padding: "5px 16px", fontSize: "11px", fontWeight: 700,
-    letterSpacing: "1.5px", textTransform: "uppercase", color: "#00AAFF", marginBottom: "20px",
+    letterSpacing: "1.5px", textTransform: "uppercase", color: "#0055FF", marginBottom: "20px",
   },
   back: {
-    background: "none", border: "none", color: "#7A90B8", fontSize: "14px",
+    background: "none", border: "none", color: "#6E6E73", fontSize: "14px",
     cursor: "pointer", padding: "0 0 16px 0", display: "block",
     fontFamily: "'Plus Jakarta Sans',sans-serif",
   },
   error: {
-    background: "rgba(220,50,50,.1)", border: "1px solid rgba(220,50,50,.3)",
+    background: "rgba(220,50,50,.05)", border: "1px solid rgba(220,50,50,.2)",
     borderRadius: "10px", padding: "12px 16px",
-    color: "#FC8181", fontSize: "13px", marginBottom: "20px",
+    color: "#E53E3E", fontSize: "13px", marginBottom: "20px",
   },
   googleBtn: {
-    width: "100%", background: "rgba(255,255,255,.05)",
-    border: "1px solid rgba(255,255,255,.09)", borderRadius: "10px", padding: "13px",
+    width: "100%", background: "#fff",
+    border: "1px solid rgba(0,0,0,.08)", borderRadius: "10px", padding: "13px",
     display: "flex", alignItems: "center", justifyContent: "center", gap: "12px",
-    color: "#fff", fontSize: "14px", fontWeight: 600, cursor: "pointer", marginBottom: "20px",
-    fontFamily: "'Plus Jakarta Sans',sans-serif",
+    color: "#1D1D1F", fontSize: "14px", fontWeight: 600, cursor: "pointer", marginBottom: "20px",
+    fontFamily: "'Plus Jakarta Sans',sans-serif", transition: "all .2s",
   },
   divider: { display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" },
-  divLine: { flex: 1, height: "1px", background: "rgba(255,255,255,.07)" },
-  divText: { fontSize: "12px", color: "#4A5568", whiteSpace: "nowrap" },
+  divLine: { flex: 1, height: "1px", background: "rgba(0,0,0,.06)" },
+  divText: { fontSize: "12px", color: "#8E8E93", whiteSpace: "nowrap" },
   form: { display: "flex", flexDirection: "column", gap: "16px" },
   input: {
-    background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.08)",
-    borderRadius: "10px", padding: "13px 16px", fontSize: "14px", color: "#fff",
+    background: "#fff", border: "1px solid rgba(0,0,0,.08)",
+    borderRadius: "10px", padding: "13px 16px", fontSize: "14px", color: "#1D1D1F",
     outline: "none", fontFamily: "'Plus Jakarta Sans',sans-serif", transition: "border-color .2s",
   },
   submitBtn: {
-    background: "linear-gradient(135deg,#00AAFF 0%,#1A6FE8 50%,#0035CC 100%)",
+    background: "linear-gradient(135deg,#0055FF 0%,#00AAFF 100%)",
     color: "#fff", border: "none", borderRadius: "10px", padding: "14px",
     fontSize: "15px", fontWeight: 700, cursor: "pointer", marginTop: "8px",
     fontFamily: "'Plus Jakarta Sans',sans-serif",
-    boxShadow: "0 4px 24px rgba(26,111,232,.4)", transition: "opacity .2s",
+    boxShadow: "0 4px 24px rgba(0,85,255,.25)", transition: "all .2s",
   },
-  loginLink: { textAlign: "center", fontSize: "14px", color: "#7A90B8", marginTop: "20px" },
-  link: { color: "#00AAFF", textDecoration: "none", fontWeight: 600 },
-  terms: { textAlign: "center", fontSize: "12px", color: "#4A5568", marginTop: "12px", lineHeight: 1.6 },
+  loginLink: { textAlign: "center", fontSize: "14px", color: "#6E6E73", marginTop: "20px" },
+  link: { color: "#0055FF", textDecoration: "none", fontWeight: 600 },
+  terms: { textAlign: "center", fontSize: "12px", color: "#8E8E93", marginTop: "12px", lineHeight: 1.6 },
 };

@@ -12,7 +12,7 @@ export default function ProfileCard({ user, matchScore, actionLabel, onAction, a
 
   return (
     <div style={{
-      background: C.ink2,
+      background: "#FFFFFF",
       border: `1px solid ${C.line}`,
       borderRadius: 16,
       padding: "24px",
@@ -21,9 +21,18 @@ export default function ProfileCard({ user, matchScore, actionLabel, onAction, a
       gap: 14,
       transition: "all .2s",
       cursor: "default",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.02)",
     }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(26,111,232,.4)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = C.line; e.currentTarget.style.transform = "none"; }}
+      onMouseEnter={e => { 
+        e.currentTarget.style.borderColor = "rgba(0,85,255,0.2)"; 
+        e.currentTarget.style.transform = "translateY(-2px)"; 
+        e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.05)";
+      }}
+      onMouseLeave={e => { 
+        e.currentTarget.style.borderColor = C.line; 
+        e.currentTarget.style.transform = "none"; 
+        e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.02)";
+      }}
     >
       {/* Top row */}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
@@ -34,11 +43,11 @@ export default function ProfileCard({ user, matchScore, actionLabel, onAction, a
           color: "#fff", flexShrink: 0,
         }}>{initials}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: "#fff", fontWeight: 700, fontSize: 15, marginBottom: 2, display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ color: C.text, fontWeight: 700, fontSize: 15, marginBottom: 2, display: "flex", alignItems: "center", gap: 8 }}>
             {user?.name || "Unknown"}
             {matchScore && (
               <span style={{
-                background: "rgba(26,111,232,.15)", color: C.blue,
+                background: "rgba(0,85,255,.08)", color: C.royal,
                 padding: "2px 6px", borderRadius: 4, fontSize: 11, fontWeight: 800
               }}>
                 {matchScore}% Match
@@ -56,13 +65,13 @@ export default function ProfileCard({ user, matchScore, actionLabel, onAction, a
         </div>
         {badgeText && (
           <div style={{
-            background: badgeColor || "rgba(0,200,100,.1)",
-            border: `1px solid ${badgeColor ? badgeColor.replace(".1)", ".3)") : "rgba(0,200,100,.3)"}`,
+            background: badgeColor || "rgba(0,180,100,.08)",
+            border: `1px solid ${badgeColor ? badgeColor.replace(".1)", ".2)") : "rgba(0,180,100,.2)"}`,
             borderRadius: 6,
             padding: "3px 10px",
             fontSize: 11,
             fontWeight: 700,
-            color: "#00C864",
+            color: "#00B464",
             flexShrink: 0,
           }}>{badgeText}</div>
         )}
@@ -83,10 +92,10 @@ export default function ProfileCard({ user, matchScore, actionLabel, onAction, a
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {skills.slice(0, 5).map((s, i) => (
             <span key={i} style={{
-              background: "rgba(26,111,232,.1)",
-              border: "1px solid rgba(26,111,232,.25)",
+              background: "rgba(0,85,255,.05)",
+              border: "1px solid rgba(0,85,255,.1)",
               borderRadius: 6, padding: "3px 10px",
-              fontSize: 11, fontWeight: 600, color: C.cyan,
+              fontSize: 11, fontWeight: 600, color: C.royal,
             }}>{s}</span>
           ))}
           {skills.length > 5 && (
@@ -101,7 +110,7 @@ export default function ProfileCard({ user, matchScore, actionLabel, onAction, a
           onClick={onAction}
           disabled={actionDisabled}
           style={{
-            background: actionDisabled ? "rgba(255,255,255,.05)" : C.grad,
+            background: actionDisabled ? "rgba(0,0,0,.03)" : C.grad,
             border: actionDisabled ? `1px solid ${C.line}` : "none",
             borderRadius: 8,
             padding: "10px 0",
@@ -112,7 +121,10 @@ export default function ProfileCard({ user, matchScore, actionLabel, onAction, a
             fontFamily: C.font,
             width: "100%",
             transition: "all .2s",
+            boxShadow: actionDisabled ? "none" : "0 4px 12px rgba(0,85,255,.2)",
           }}
+          onMouseEnter={e => { if(!actionDisabled) e.currentTarget.style.transform = "translateY(-1px)"; }}
+          onMouseLeave={e => { if(!actionDisabled) e.currentTarget.style.transform = "none"; }}
         >
           {actionLabel}
         </button>

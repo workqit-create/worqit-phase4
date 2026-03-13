@@ -128,175 +128,205 @@ export default function DocumentVault() {
         const now = new Date();
         const diffDays = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
 
-        if (diffDays < 0) return { status: "expired", text: "Expired", color: C.red };
-        if (diffDays <= 30) return { status: "expiring", text: `Expires in ${diffDays} days`, color: C.yellow };
-        return { status: "valid", text: `Valid until ${expiry.toLocaleDateString()}`, color: C.green };
+        if (diffDays < 0) return { status: "expired", text: "Expired", color: "#EF4444" };
+        if (diffDays <= 30) return { status: "expiring", text: `Expires in ${diffDays} days`, color: "#F59E0B" };
+        return { status: "valid", text: `Valid until ${expiry.toLocaleDateString()}`, color: "#10B981" };
     };
 
     const S = {
-        container: { padding: 30, maxWidth: 900, margin: "0 auto", color: "#fff", fontFamily: C.font },
-        header: { fontSize: 24, fontWeight: 700, marginBottom: 8 },
-        sub: { color: C.silver, fontSize: 14, marginBottom: 30 },
+        container: { maxWidth: "1200px", margin: "0 auto", fontFamily: C.font, color: "#1D1D1F" },
+        header: { marginBottom: "48px" },
+        title: { fontSize: "32px", fontWeight: 900, color: "#1D1D1F", fontFamily: "'Outfit', sans-serif", letterSpacing: "-1px", marginBottom: "8px" },
+        subtitle: { color: "#94A3B8", fontSize: "16px", fontWeight: 500 },
 
-        grid: { display: "grid", gridTemplateColumns: "1fr 2fr", gap: 30 },
+        grid: { display: "grid", gridTemplateColumns: "400px 1fr", gap: "48px" },
 
-        card: { background: C.ink2, borderRadius: 12, border: `1px solid ${C.line}`, padding: 24 },
-        cardTitle: { fontSize: 16, fontWeight: 700, marginBottom: 20, display: "flex", alignItems: "center", gap: 10 },
+        card: { background: "#fff", borderRadius: "32px", border: "1px solid #E2E8F0", padding: "32px", boxShadow: "0 24px 48px -12px rgba(0,0,0,0.05)" },
+        cardTitle: { fontSize: "20px", fontWeight: 900, marginBottom: "32px", color: "#1D1D1F", borderBottom: "1px solid #F1F5F9", paddingBottom: "20px", display: "flex", alignItems: "center", gap: "12px" },
 
-        formGroup: { marginBottom: 16 },
-        label: { display: "block", fontSize: 13, color: C.silver, marginBottom: 6, fontWeight: 600 },
-        input: { width: "100%", background: C.ink, border: `1px solid ${C.line}`, borderRadius: 8, padding: "10px 14px", color: "#fff", outline: "none" },
-        select: { width: "100%", background: C.ink, border: `1px solid ${C.line}`, borderRadius: 8, padding: "10px 14px", color: "#fff", outline: "none", cursor: "pointer", appearance: "none" },
+        formGroup: { marginBottom: "20px" },
+        label: { display: "block", fontSize: "11px", color: "#94A3B8", marginBottom: "8px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1px" },
+        input: { width: "100%", background: "#fff", border: "1px solid #E2E8F0", borderRadius: "14px", padding: "12px 16px", fontSize: "14px", color: "#1D1D1F", outline: "none", transition: "all 0.2s", boxSizing: "border-box", fontWeight: 600 },
+        select: { width: "100%", background: "#fff", border: "1px solid #E2E8F0", borderRadius: "14px", padding: "12px 16px", fontSize: "14px", color: "#1D1D1F", outline: "none", cursor: "pointer", appearance: "none", boxSizing: "border-box", fontWeight: 600 },
 
         uploadBox: {
-            border: `2px dashed ${C.line}`, borderRadius: 12, padding: "30px 20px",
-            textAlign: "center", cursor: "pointer", background: "rgba(255,255,255,.02)",
-            marginBottom: 20, transition: "border-color 0.2s"
+            border: "2px dashed #E2E8F0", borderRadius: "20px", padding: "40px 20px",
+            textAlign: "center", cursor: "pointer", background: "rgba(248, 250, 252, 0.5)",
+            marginBottom: "20px", transition: "all 0.2s"
         },
 
         btn: {
-            width: "100%", background: C.blue, color: "#fff", border: "none",
-            padding: "12px", borderRadius: 8, fontWeight: 600, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8
+            width: "100%", background: "#1D1D1F", color: "#fff", border: "none",
+            padding: "18px", borderRadius: "16px", fontWeight: 800, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "12px",
+            fontSize: "13px", transition: "all 0.2s", textTransform: "uppercase", letterSpacing: "1.5px"
         },
 
         docItem: {
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "16px", background: "rgba(255,255,255,.03)", borderRadius: 10,
-            marginBottom: 12, border: `1px solid ${C.line}`
+            padding: "24px 32px", background: "#fff", borderRadius: "24px",
+            marginBottom: "16px", border: "1px solid #E2E8F0", transition: "all 0.3s",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.02)"
         },
-        docLeft: { display: "flex", alignItems: "center", gap: 16 },
-        docIcon: { width: 44, height: 44, borderRadius: 10, background: "rgba(26,111,232,.15)", color: C.blue, display: "flex", alignItems: "center", justifyContent: "center" },
-        docName: { fontSize: 15, fontWeight: 600, marginBottom: 4 },
-        docMeta: { fontSize: 12, color: C.silver, display: "flex", gap: 12, alignItems: "center" },
+        docLeft: { display: "flex", alignItems: "center", gap: "20px" },
+        docIcon: { 
+            width: "52px", height: "52px", borderRadius: "16px", 
+            background: "rgba(0,85,255,0.06)", color: "#0055FF", 
+            display: "flex", alignItems: "center", justifyContent: "center",
+            border: "1px solid rgba(0,85,255,0.1)"
+        },
+        docName: { fontSize: "16px", fontWeight: 800, color: "#1D1D1F", marginBottom: "4px" },
+        docMeta: { fontSize: "13px", color: "#94A3B8", display: "flex", gap: "12px", alignItems: "center", fontWeight: 600 },
 
-        badge: (color) => ({ padding: "2px 8px", borderRadius: 100, fontSize: 11, fontWeight: 600, background: `${color}20`, color }),
+        badge: (color) => ({ padding: "4px 12px", borderRadius: "100px", fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "1px", background: `${color}10`, color, border: `1px solid ${color}20` }),
 
-        actions: { display: "flex", gap: 10 },
-        iconBtn: { background: "none", border: "none", color: C.silver, cursor: "pointer", padding: 6, borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", transition: "all .2s" },
+        actions: { display: "flex", gap: "12px" },
+        iconBtn: { 
+            width: "40px", height: "40px", background: "#fff", border: "1px solid #E2E8F0", 
+            color: "#64748B", cursor: "pointer", borderRadius: "12px", 
+            display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" 
+        },
+        empty: {
+            textAlign: "center", padding: "120px 40px", background: "#fff", borderRadius: "32px",
+            border: "1px dashed #E2E8F0"
+        }
     };
 
     return (
         <div style={S.container}>
-            <h1 style={S.header}>HR Document Hub <span style={S.badge(C.green)}>BETA</span></h1>
-            <p style={S.sub}>Upload your compliance documents. Control who sees them. Get notified before they expire.</p>
+            <div style={S.header}>
+                <h1 style={S.title}>Document Vault</h1>
+                <p style={S.subtitle}>Secure, strategic storage for your professional compliance assets.</p>
+            </div>
 
             <div style={S.grid}>
 
                 {/* UPLOAD PANEL */}
-                <div style={S.card}>
-                    <h2 style={S.cardTitle}><Upload size={18} /> Upload Document</h2>
+                <div>
+                    <div style={S.card}>
+                        <h2 style={S.cardTitle}><Upload size={20} /> Upload Asset</h2>
 
-                    <form onSubmit={handleUpload}>
-                        <div style={S.formGroup}>
-                            <label style={S.label}>Document Type</label>
-                            <select style={S.select} value={docCategory} onChange={e => setDocCategory(e.target.value)}>
-                                {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                        </div>
+                        <form onSubmit={handleUpload}>
+                            <div style={S.formGroup}>
+                                <label style={S.label}>Category</label>
+                                <div style={{ position: "relative" }}>
+                                    <select style={S.select} value={docCategory} onChange={e => setDocCategory(e.target.value)}>
+                                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                    <span className="material-symbols-outlined" style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", color: "#94A3B8", pointerEvents: "none" }}>expand_more</span>
+                                </div>
+                            </div>
 
-                        <div style={{ position: "relative" }}>
-                            <input
-                                type="file"
-                                onChange={handleFileChange}
-                                accept=".pdf,.jpg,.jpeg,.png,.docx"
-                                style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer" }}
-                            />
-                            <div style={S.uploadBox}>
-                                <FileText size={32} color={C.silver} style={{ marginBottom: 10 }} />
-                                <div style={{ fontSize: 14, fontWeight: 600 }}>{file ? file.name : "Click or drag file to upload"}</div>
-                                <div style={{ fontSize: 12, color: C.silver, marginTop: 4 }}>PDF, JPG, PNG (Max 10MB)</div>
+                            <div style={{ position: "relative" }}>
+                                <input
+                                    type="file"
+                                    onChange={handleFileChange}
+                                    accept=".pdf,.jpg,.jpeg,.png,.docx"
+                                    style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer" }}
+                                />
+                                <div style={S.uploadBox} onMouseEnter={e => e.currentTarget.style.borderColor = "#0055FF"} onMouseLeave={e => e.currentTarget.style.borderColor = "#E2E8F0"}>
+                                    <FileText size={40} color={file ? "#0055FF" : "#CBD5E1"} style={{ marginBottom: "16px" }} />
+                                    <div style={{ fontSize: "14px", fontWeight: 800, color: file ? "#1D1D1F" : "#94A3B8" }}>{file ? file.name : "Select Document"}</div>
+                                    <div style={{ fontSize: "12px", color: "#CBD5E1", marginTop: "4px", fontWeight: 600 }}>PDF, JPG, PNG (Max 10MB)</div>
+                                </div>
+                            </div>
+
+                            <div style={S.formGroup}>
+                                <label style={S.label}>Visibility Protocol</label>
+                                <div style={{ position: "relative" }}>
+                                    <select style={S.select} value={visibility} onChange={e => setVisibility(e.target.value)}>
+                                        <option value="private">Private (Shared manually)</option>
+                                        <option value="public">Public (Visible to Hirers)</option>
+                                    </select>
+                                    <span className="material-symbols-outlined" style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", color: "#94A3B8", pointerEvents: "none" }}>expand_more</span>
+                                </div>
+                            </div>
+
+                            <div style={S.formGroup}>
+                                <label style={S.label}>Expiry Window (Optional)</label>
+                                <input
+                                    type="date"
+                                    style={S.input}
+                                    value={expiryDate}
+                                    onChange={e => setExpiryDate(e.target.value)}
+                                />
+                            </div>
+
+                            <button type="submit" disabled={!file || uploading} style={{ ...S.btn, opacity: (!file || uploading) ? 0.5 : 1 }}>
+                                {uploading ? "Uploading..." : "Secure to Vault"}
+                            </button>
+                        </form>
+                    </div>
+
+                    {/* PENDING REQUESTS PANEL */}
+                    {requests.length > 0 && (
+                        <div style={{ ...S.card, marginTop: "32px", border: "1px solid #F59E0B", background: "rgba(245,158,11,0.02)" }}>
+                            <h2 style={{ ...S.cardTitle, color: "#F59E0B", borderBottom: "1px solid rgba(245,158,11,0.1)" }}><Clock size={20} /> Active Requests</h2>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                                {requests.map(req => (
+                                    <div key={req.id} style={{ background: "#fff", padding: "20px", borderRadius: "16px", border: "1px solid rgba(245,158,11,0.2)" }}>
+                                        <div style={{ fontWeight: 800, color: "#1D1D1F", marginBottom: "4px", fontSize: "14px" }}>Request: {req.documentType}</div>
+                                        <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "16px", fontWeight: 600 }}>{req.notes || "Official document request from Hirer."}</div>
+                                        <div style={{ position: "relative" }}>
+                                            <select
+                                                style={{ ...S.select, padding: "10px 14px", fontSize: "12px" }}
+                                                onChange={(e) => {
+                                                    if (e.target.value) handleFulfillRequest(req.id, e.target.value, req.hirerId);
+                                                }}
+                                                defaultValue=""
+                                            >
+                                                <option value="" disabled>Select vault asset to share...</option>
+                                                {documents.map(d => (
+                                                    <option key={d.id} value={d.id}>{d.docCategory} ({d.fileName})</option>
+                                                ))}
+                                            </select>
+                                            <span className="material-symbols-outlined" style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", color: "#94A3B8", pointerEvents: "none", fontSize: "18px" }}>expand_more</span>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
-
-                        <div style={S.formGroup}>
-                            <label style={S.label}>Visibility</label>
-                            <select style={S.select} value={visibility} onChange={e => setVisibility(e.target.value)}>
-                                <option value="private">Private (Only you & explicitly shared)</option>
-                                <option value="public">Public (Visible to all Hirers on your profile)</option>
-                            </select>
-                        </div>
-
-                        <div style={S.formGroup}>
-                            <label style={S.label}>Expiry Date (Optional)</label>
-                            <input
-                                type="date"
-                                style={S.input}
-                                value={expiryDate}
-                                onChange={e => setExpiryDate(e.target.value)}
-                            />
-                        </div>
-
-                        <button type="submit" disabled={!file || uploading} style={{ ...S.btn, opacity: (!file || uploading) ? 0.5 : 1 }}>
-                            {uploading ? "Uploading..." : "Save to Vault"}
-                        </button>
-                    </form>
+                    )}
                 </div>
 
-                {/* PENDING REQUESTS PANEL */}
-                {requests.length > 0 && (
-                    <div style={{ ...S.card, borderColor: C.yellow }}>
-                        <h2 style={{ ...S.cardTitle, color: C.yellow }}><Clock size={18} /> Pending Requests</h2>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                            {requests.map(req => (
-                                <div key={req.id} style={{ background: "rgba(241,196,15,.1)", padding: 16, borderRadius: 8, border: `1px solid rgba(241,196,15,.3)` }}>
-                                    <div style={{ fontWeight: 600, marginBottom: 4 }}>Requested: {req.documentType}</div>
-                                    <div style={{ fontSize: 13, color: C.silver, marginBottom: 12 }}>{req.notes}</div>
-                                    <select
-                                        style={{ ...S.select, marginBottom: 0, padding: 8 }}
-                                        onChange={(e) => {
-                                            if (e.target.value) handleFulfillRequest(req.id, e.target.value, req.hirerId);
-                                        }}
-                                        defaultValue=""
-                                    >
-                                        <option value="" disabled>Select file from vault to share...</option>
-                                        {documents.map(d => (
-                                            <option key={d.id} value={d.id}>{d.fileName} ({d.docCategory})</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
                 {/* VAULT LIST */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
+                <div>
                     {loading ? (
-                        <div style={{ padding: 40, textAlign: "center", color: C.silver }}>Loading your documents...</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                            {[1, 2, 3].map(i => <div key={i} style={{ height: "100px", background: "#fff", borderRadius: "24px", border: "1px solid #E2E8F0", opacity: 0.5 }} />)}
+                        </div>
                     ) : documents.length === 0 ? (
-                        <div style={{ ...S.card, textAlign: "center", padding: "60px 20px" }}>
-                            <ShieldAlert size={48} color={C.silver} style={{ marginBottom: 16, opacity: 0.5 }} />
-                            <div style={{ fontSize: 16, fontWeight: 600 }}>Your vault is empty</div>
-                            <div style={{ fontSize: 13, color: C.silver, marginTop: 6 }}>Upload your resume, passport, and visas to easily share them with employers.</div>
+                        <div style={S.empty}>
+                            <ShieldAlert size={64} color="#E2E8F0" style={{ marginBottom: "24px" }} />
+                            <h3 style={{ fontSize: "20px", fontWeight: 800, color: "#1D1D1F", margin: "0 0 8px" }}>Vault is empty</h3>
+                            <p style={{ fontSize: "14px", color: "#94A3B8", fontWeight: 500 }}>Upload your resume, passport, and visas to streamline applications.</p>
                         </div>
                     ) : (
                         documents.map(doc => {
                             const expiryInfo = checkExpiry(doc.expiryDate);
 
                             return (
-                                <div key={doc.id} style={S.docItem}>
+                                <div key={doc.id} style={S.docItem} onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"} onMouseLeave={e => e.currentTarget.style.transform = "none"}>
                                     <div style={S.docLeft}>
-                                        <div style={S.docIcon}><FileText size={20} /></div>
+                                        <div style={S.docIcon}><FileText size={24} /></div>
                                         <div>
                                             <div style={S.docName}>{doc.docCategory}</div>
                                             <div style={S.docMeta}>
-                                                <span>{doc.fileName}</span>
+                                                <span style={{ color: "#1D1D1F" }}>{doc.fileName.length > 20 ? doc.fileName.slice(0, 20) + "..." : doc.fileName}</span>
                                                 <span>•</span>
                                                 <span>{(doc.size / 1024 / 1024).toFixed(2)} MB</span>
 
                                                 {/* Visibility Badge */}
                                                 <span
                                                     onClick={() => toggleVisibility(doc)}
-                                                    style={{ cursor: "pointer", ...S.badge(doc.visibility === "public" ? C.green : C.yellow) }}
+                                                    style={{ cursor: "pointer", ...S.badge(doc.visibility === "public" ? "#10B981" : "#F59E0B") }}
                                                 >
                                                     {doc.visibility === "public" ? <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Eye size={10} /> Public</span> : <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><EyeOff size={10} /> Private</span>}
                                                 </span>
 
                                                 {/* Expiry Alert Base */}
                                                 {expiryInfo && (
-                                                    <span style={{ display: "flex", alignItems: "center", gap: 4, color: expiryInfo.color, fontWeight: 600 }}>
+                                                    <span style={{ display: "flex", alignItems: "center", gap: 4, color: expiryInfo.color, fontWeight: 800, fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                                                         <Clock size={12} /> {expiryInfo.text}
                                                     </span>
                                                 )}
@@ -305,10 +335,18 @@ export default function DocumentVault() {
                                     </div>
 
                                     <div style={S.actions}>
-                                        <a href={doc.url} target="_blank" rel="noopener noreferrer" style={S.iconBtn} title="Download/View">
-                                            <DownloadCloud size={18} />
+                                        <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                                            <button style={S.iconBtn} title="Download/View" onMouseEnter={e => e.currentTarget.style.color = "#0055FF"} onMouseLeave={e => e.currentTarget.style.color = "#64748B"}>
+                                                <DownloadCloud size={18} />
+                                            </button>
                                         </a>
-                                        <button style={{ ...S.iconBtn, color: C.red }} onClick={() => handleDelete(doc.id, doc.storagePath)} title="Delete">
+                                        <button 
+                                            style={S.iconBtn} 
+                                            onClick={() => handleDelete(doc.id, doc.storagePath)} 
+                                            title="Delete"
+                                            onMouseEnter={e => { e.currentTarget.style.color = "#EF4444"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.2)"; }}
+                                            onMouseLeave={e => { e.currentTarget.style.color = "#64748B"; e.currentTarget.style.borderColor = "#E2E8F0"; }}
+                                        >
                                             <Trash2 size={18} />
                                         </button>
                                     </div>
@@ -322,3 +360,4 @@ export default function DocumentVault() {
         </div>
     );
 }
+

@@ -1,6 +1,6 @@
 // src/pages/hirer/DocumentTracker.js
 // ═══════════════════════════════════════════════════════
-//  Document Tracker — Hirer View (Phase 7)
+//  Document Tracker — Hirer View (Ultra-Premium White)
 // ═══════════════════════════════════════════════════════
 
 import React, { useState, useEffect } from "react";
@@ -9,12 +9,110 @@ import { getDocumentRequests } from "../../services/documentService";
 import { getDoc, doc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { C } from "../shared/theme";
-import { FileText, Clock, CheckCircle } from "lucide-react";
+import { FileText, Clock, CheckCircle, Download, Shield, Briefcase, ChevronRight } from "lucide-react";
+import jsPDF from "jspdf";
 
-export default function DocumentTracker() {
+const TEMPLATES = [
+    {
+        id: "offer_letter",
+        title: "Standard Offer Letter (UAE)",
+        icon: <Briefcase size={24} />,
+        description: "Strategic employment offer outlining designation, compensation, and MoHRE terms.",
+        fields: [
+            { id: "candidateName", label: "Candidate Full Name", type: "text" },
+            { id: "designation", label: "Job Title / Designation", type: "text" },
+            { id: "companyName", label: "Organization Name", type: "text" },
+            { id: "basicSalary", label: "Basic Salary (AED)", type: "number" },
+            { id: "housingAllowance", label: "Housing Allowance (AED)", type: "number" },
+            { id: "transportAllowance", label: "Transport Allowance (AED)", type: "number" },
+            { id: "startDate", label: "Engagement Start Date", type: "date" },
+            { id: "probation", label: "Probation Cycle (Months)", type: "number", default: "6" },
+            { id: "noticePeriod", label: "Notice Window (Days)", type: "number", default: "30" },
+        ],
+        generate: (data) => {
+            const doc = new jsPDF();
+            doc.setFontSize(18); doc.setFont("helvetica", "bold");
+            doc.text("OFFER OF EMPLOYMENT", 105, 20, { align: "center" });
+            doc.setFontSize(11); doc.setFont("helvetica", "normal");
+            const today = new Date().toLocaleDateString("en-GB");
+            doc.text(`Date: ${today}`, 20, 35);
+            doc.text(`Dear ${data.candidateName || "[Candidate Name]"},`, 20, 50);
+            doc.setFontSize(10);
+            const bodyLines = [
+                `We are pleased to offer you the position of ${data.designation || "[Designation]"} at`,
+                `${data.companyName || "[Company Name]"}, subject to the terms and conditions set out below.`,
+                "",
+                `Strategic Package:`,
+                `  - Basic Salary:             AED ${data.basicSalary || "0"} / month`,
+                `  - Housing Allowance:         AED ${data.housingAllowance || "0"} / month`,
+                `  - Transport Allowance:        AED ${data.transportAllowance || "0"} / month`,
+                `  - Total:                     AED ${(+data.basicSalary || 0) + (+data.housingAllowance || 0) + (+data.transportAllowance || 0)} / month`,
+                "",
+                `Start Date: ${data.startDate || "[Start Date]"}`,
+                `Probation Period: ${data.probation || "6"} months`,
+                `Notice Period: ${data.noticePeriod || "30"} days`,
+                "",
+                `This offer is contingent upon your acceptance and successful verification.`,
+                "",
+                `Sincerely,`,
+                `Talent Acquisition — ${data.companyName || "[Company Name]"}`,
+            ];
+            doc.text(bodyLines, 20, 65, { lineHeightFactor: 1.6 });
+            doc.line(20, 235, 90, 235); doc.text("Authorized Signatory", 20, 242);
+            doc.line(120, 235, 190, 235); doc.text("Candidate Signature", 120, 242);
+            return doc;
+        }
+    },
+    {
+        id: "nda",
+        title: "Non-Disclosure Agreement (NDA)",
+        icon: <Shield size={24} />,
+        description: "Elite confidentiality agreement to protect strategic data before formal engagement.",
+        fields: [
+            { id: "candidateName", label: "Recipient Full Name", type: "text" },
+            { id: "companyName", label: "Disclosing Organization", type: "text" },
+            { id: "effectiveDate", label: "Effective Date", type: "date" },
+        ],
+        generate: (data) => {
+            const doc = new jsPDF();
+            doc.setFontSize(18); doc.setFont("helvetica", "bold");
+            doc.text("NON-DISCLOSURE AGREEMENT", 105, 20, { align: "center" });
+            doc.setFontSize(10); doc.setFont("helvetica", "normal");
+            const lines = [
+                `This Non-Disclosure Agreement ("Agreement") is entered into as of`,
+                `${data.effectiveDate || "[Date]"}, between ${data.companyName || "[Company]"} ("Company")`,
+                `and ${data.candidateName || "[Candidate]"} ("Recipient").`,
+                "",
+                `1. CONFIDENTIAL INFORMATION`,
+                `The Recipient agrees to keep all proprietary business information, trade secrets,`,
+                `technical data, and other confidential materials strictly confidential.`,
+                "",
+                `2. OBLIGATIONS`,
+                `The Recipient shall not disclose any Confidential Information to third parties`,
+                `without prior written consent from the Company.`,
+                "",
+                `3. GOVERNING LAW`,
+                `This Agreement shall be governed by the laws of the United Arab Emirates.`,
+            ];
+            doc.text(lines, 20, 40, { lineHeightFactor: 1.6 });
+            doc.line(20, 220, 90, 220); doc.text("Organization Representative", 20, 227);
+            doc.line(120, 220, 190, 220); doc.text("Recipient Signature", 120, 227);
+            return doc;
+        }
+    }
+];
+
+export default function DocumentHub() {
     const { currentUser } = useAuth();
+    const [tab, setTab] = useState("tracker");
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // Compliance state
+    const [selectedTemplate, setSelectedTemplate] = useState(null);
+    const [formData, setFormData] = useState({});
+    const [generating, setGenerating] = useState(false);
+    const [success, setSuccess] = useState(false);
 
     useEffect(() => {
         if (currentUser) {
@@ -27,120 +125,235 @@ export default function DocumentTracker() {
         try {
             const reqs = await getDocumentRequests(currentUser.uid, "hirer");
 
-            // Fetch candidate names and resolved document URLs
             const enriched = await Promise.all(reqs.map(async (r) => {
                 let candidateName = "Unknown Candidate";
                 let docData = null;
-
                 try {
-                    // Get candidate info
                     const candSnap = await getDoc(doc(db, "users", r.candidateId));
-                    if (candSnap.exists()) {
-                        candidateName = candSnap.data().name || "Candidate";
-                    }
-
-                    // If fulfilled, get the document URL
+                    if (candSnap.exists()) candidateName = candSnap.data().name || "Candidate";
                     if (r.status === "fulfilled" && r.fulfilledWithDocId) {
                         const docSnap = await getDoc(doc(db, "documents", r.fulfilledWithDocId));
-                        if (docSnap.exists()) {
-                            docData = docSnap.data();
-                        }
+                        if (docSnap.exists()) docData = docSnap.data();
                     }
-                } catch (e) {
-                    console.error("Error fetching details for request", r.id, e);
-                }
-
+                } catch (e) { console.error(e); }
                 return { ...r, candidateName, docData };
             }));
-
             setRequests(enriched);
-        } catch (e) {
-            console.error("Error loading document requests:", e);
-        } finally {
-            setLoading(false);
-        }
+        } catch (e) { console.error(e); }
+        setLoading(false);
+    };
+
+    const handleSelectTemplate = (tmpl) => {
+        setSelectedTemplate(tmpl);
+        setSuccess(false);
+        const initialData = {};
+        tmpl.fields.forEach(f => { initialData[f.id] = f.default || ""; });
+        setFormData(initialData);
+    };
+
+    const handleGenerate = (e) => {
+        e.preventDefault();
+        setGenerating(true);
+        try {
+            const pdfDoc = selectedTemplate.generate(formData);
+            pdfDoc.save(`${selectedTemplate.id}_${Date.now()}.pdf`);
+            setSuccess(true);
+        } catch (err) { alert("Failed to generate PDF."); }
+        setGenerating(false);
     };
 
     const S = {
-        container: { padding: "30px 40px", color: "#fff", fontFamily: C.font, maxWidth: 1000, margin: "0 auto" },
-        header: { fontSize: 28, fontWeight: 700, marginBottom: 8 },
-        sub: { color: C.silver, fontSize: 15, marginBottom: 30 },
+        container: { maxWidth: "1200px", margin: "0 auto", fontFamily: C.font },
+        header: { marginBottom: "48px" },
+        title: { fontSize: "32px", fontWeight: 900, color: "#1D1D1F", fontFamily: "'Outfit', sans-serif", letterSpacing: "-1px", marginBottom: "16px" },
+        
+        tabBar: { display: "flex", gap: "12px", marginBottom: "40px", padding: "6px", background: "#F1F5F9", borderRadius: "20px", width: "fit-content" },
+        tabBtn: (active) => ({
+            padding: "12px 24px", borderRadius: "14px", border: "none",
+            background: active ? "#fff" : "transparent",
+            color: active ? "#0055FF" : "#64748B",
+            fontWeight: 800, fontSize: "13px", cursor: "pointer",
+            boxShadow: active ? "0 4px 12px rgba(0,0,0,0.05)" : "none",
+            transition: "all 0.2s", display: "flex", alignItems: "center", gap: "8px"
+        }),
 
         card: {
-            background: C.ink2, borderRadius: 12, border: `1px solid ${C.line}`,
-            padding: 20, marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between"
+            background: "#fff", borderRadius: "24px", border: "1px solid #E2E8F0",
+            padding: "24px 32px", marginBottom: "16px", display: "flex", alignItems: "center",
+            justifyContent: "space-between", boxShadow: "0 4px 12px rgba(0,0,0,0.02)",
+            transition: "all 0.3s ease"
+        },
+        left: { display: "flex", alignItems: "center", gap: "20px" },
+        icon: (fulfilled) => ({
+            width: "52px", height: "52px", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "center",
+            background: fulfilled ? "rgba(0,180,100,0.06)" : "rgba(245,166,35,0.06)",
+            color: fulfilled ? "#00B464" : "#F5A623",
+            border: `1px solid ${fulfilled ? "rgba(0,180,100,0.1)" : "rgba(245,166,35,0.1)"}`
+        }),
+        docType: { fontSize: "16px", fontWeight: 800, color: "#1D1D1F", marginBottom: "4px" },
+        meta: { fontSize: "13px", color: "#94A3B8", fontWeight: 600 },
+        statusBadge: (fulfilled) => ({
+            padding: "6px 14px", borderRadius: "100px", fontSize: "11px", fontWeight: 900,
+            textTransform: "uppercase", letterSpacing: "1px",
+            background: fulfilled ? "rgba(0,180,100,0.08)" : "rgba(245,166,35,0.08)",
+            color: fulfilled ? "#00B464" : "#F5A623",
+            border: `1px solid ${fulfilled ? "rgba(0,180,100,0.15)" : "rgba(245,166,35,0.15)"}`
+        }),
+        downloadBtn: {
+            background: "#1D1D1F", color: "#fff", border: "none", padding: "10px 20px",
+            borderRadius: "12px", fontSize: "12px", fontWeight: 800, cursor: "pointer",
+            textTransform: "uppercase", letterSpacing: "1px", display: "flex", alignItems: "center", gap: "8px",
+            transition: "all 0.2s", boxShadow: "0 8px 20px rgba(0,0,0,0.1)"
+        },
+        empty: {
+            textAlign: "center", padding: "120px 40px", background: "#fff", borderRadius: "32px",
+            border: "1px dashed #E2E8F0"
         },
 
-        left: { display: "flex", alignItems: "center", gap: 16 },
-        icon: (status) => ({
-            width: 48, height: 48, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
-            background: status === "fulfilled" ? "rgba(46,204,113,.15)" : "rgba(241,196,15,.15)",
-            color: status === "fulfilled" ? C.green : C.yellow
+        // Compliance styles
+        complianceGrid: { display: "grid", gridTemplateColumns: "400px 1fr", gap: "48px" },
+        tmplCard: (active) => ({
+            background: active ? "rgba(0,85,255,0.04)" : "#fff",
+            border: `1px solid ${active ? "#0055FF" : "#E2E8F0"}`,
+            borderRadius: "24px", padding: "24px", cursor: "pointer",
+            transition: "all 0.3s", display: "flex", alignItems: "flex-start", gap: "20px",
+            marginBottom: "16px", boxShadow: active ? "0 12px 24px -8px rgba(0,85,255,0.1)" : "0 4px 12px rgba(0,0,0,0.02)"
         }),
-
-        title: { fontSize: 16, fontWeight: 600, marginBottom: 4 },
-        meta: { fontSize: 13, color: C.silver, display: "flex", gap: 12, alignItems: "center" },
-
-        statusBadge: (status) => ({
-            padding: "4px 10px", borderRadius: 100, fontSize: 12, fontWeight: 700,
-            background: status === "fulfilled" ? `${C.green}20` : `${C.yellow}20`,
-            color: status === "fulfilled" ? C.green : C.yellow,
-            display: "flex", alignItems: "center", gap: 6
+        iconWrap: (active) => ({
+            width: "52px", height: "52px", borderRadius: "16px",
+            background: active ? "#0055FF" : "#F1F5F9",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: active ? "#fff" : "#94A3B8", flexShrink: 0, transition: "all 0.3s"
         }),
-
+        tmplTitle: { fontSize: "16px", fontWeight: 800, color: "#1D1D1F", marginBottom: "6px" },
+        tmplDesc: { fontSize: "13px", color: "#94A3B8", lineHeight: 1.5, fontWeight: 500 },
+        formPanel: { background: "#fff", border: "1px solid #E2E8F0", borderRadius: "32px", padding: "40px", boxShadow: "0 24px 48px -12px rgba(0,0,0,0.05)" },
+        formTitle: { fontSize: "20px", fontWeight: 900, marginBottom: "32px", color: "#1D1D1F", borderBottom: "1px solid #F1F5F9", paddingBottom: "20px" },
+        input: {
+            width: "100%", background: "#fff", border: "1px solid #E2E8F0", borderRadius: "14px",
+            padding: "12px 16px", fontSize: "14px", color: "#1D1D1F", outline: "none", transition: "all 0.2s",
+            boxSizing: "border-box", fontWeight: 600
+        },
+        label: { display: "block", fontSize: "11px", color: "#94A3B8", marginBottom: "8px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1px" },
         btn: {
-            background: C.blue, color: "#fff", border: "none", padding: "8px 16px",
-            borderRadius: 8, fontWeight: 600, cursor: "pointer", textDecoration: "none",
-            display: "inline-block"
+            width: "100%", background: "#1D1D1F", color: "#fff", border: "none", marginTop: "32px",
+            padding: "18px", borderRadius: "16px", fontWeight: 800, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "12px",
+            fontSize: "13px", transition: "all 0.2s", textTransform: "uppercase", letterSpacing: "1.5px"
         }
     };
 
     return (
         <div style={S.container}>
-            <h1 style={S.header}>Document Tracker</h1>
-            <p style={S.sub}>Manage and view compliance documents requested from candidates.</p>
+            <div style={S.header}>
+                <h1 style={S.title}>Document Hub</h1>
+                <div style={S.tabBar}>
+                    <button onClick={() => setTab("tracker")} style={S.tabBtn(tab === "tracker")}>
+                        <FileText size={18} /> Vault Tracker
+                    </button>
+                    <button onClick={() => setTab("compliance")} style={S.tabBtn(tab === "compliance")}>
+                        <Shield size={18} /> Compliance Templates
+                    </button>
+                </div>
+            </div>
 
-            {loading ? (
-                <div style={{ padding: 40, textAlign: "center", color: C.silver }}>Loading requests...</div>
-            ) : requests.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "80px 20px", background: C.ink2, borderRadius: 12, border: `1px dashed ${C.line}` }}>
-                    <FileText size={48} color={C.silver} style={{ marginBottom: 16, opacity: 0.5 }} />
-                    <div style={{ fontSize: 16, fontWeight: 600 }}>No document requests yet</div>
-                    <div style={{ fontSize: 14, color: C.silver, marginTop: 8 }}>
-                        Open a chat with a candidate and click "Req Doc" to ask for passports, resumes, or other files.
+            {tab === "tracker" && (
+                <>
+                    {loading ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                            {[1, 2, 3].map(i => <div key={i} style={{ height: "100px", background: "#fff", borderRadius: "24px", border: "1px solid #E2E8F0", opacity: 0.5 }} />)}
+                        </div>
+                    ) : requests.length === 0 ? (
+                        <div style={S.empty}>
+                            <FileText size={64} color="#E2E8F0" style={{ marginBottom: "24px" }} />
+                            <h3 style={{ fontSize: "20px", fontWeight: 800, color: "#1D1D1F", margin: "0 0 8px" }}>No active requests</h3>
+                            <p style={{ fontSize: "14px", color: "#94A3B8", fontWeight: 500 }}>Request documents directly from the message interface.</p>
+                        </div>
+                    ) : (
+                        requests.map(req => {
+                            const fulfilled = req.status === "fulfilled";
+                            return (
+                                <div key={req.id} style={S.card} onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"} onMouseLeave={e => e.currentTarget.style.transform = "none"}>
+                                    <div style={S.left}>
+                                        <div style={S.icon(fulfilled)}>
+                                            {fulfilled ? <CheckCircle size={24} /> : <Clock size={24} />}
+                                        </div>
+                                        <div>
+                                            <div style={S.docType}>{req.documentType}</div>
+                                            <div style={S.meta}>
+                                                Requested from <span style={{ color: "#1D1D1F" }}>{req.candidateName}</span> • {new Date(req.requestedAt?.toDate()).toLocaleDateString()}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+                                        <div style={S.statusBadge(fulfilled)}>
+                                            {fulfilled ? "Fulfilled" : "Pending Upload"}
+                                        </div>
+
+                                        {fulfilled && req.docData?.url && (
+                                            <a href={req.docData.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                                                <button style={S.downloadBtn}>
+                                                    <Download size={16} /> Download
+                                                </button>
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
+                </>
+            )}
+
+            {tab === "compliance" && (
+                <div style={S.complianceGrid}>
+                    <div>
+                        {TEMPLATES.map(tmpl => (
+                            <div key={tmpl.id} style={S.tmplCard(selectedTemplate?.id === tmpl.id)} onClick={() => handleSelectTemplate(tmpl)}>
+                                <div style={S.iconWrap(selectedTemplate?.id === tmpl.id)}>{tmpl.icon}</div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={S.tmplTitle}>{tmpl.title}</div>
+                                    <div style={S.tmplDesc}>{tmpl.description}</div>
+                                </div>
+                                <ChevronRight size={20} color={selectedTemplate?.id === tmpl.id ? "#0055FF" : "#CBD5E1"} style={{ alignSelf: "center" }} />
+                            </div>
+                        ))}
+                    </div>
+
+                    <div>
+                        {selectedTemplate ? (
+                            <div style={S.formPanel}>
+                                <div style={S.formTitle}>Strategic Draft: {selectedTemplate.title}</div>
+                                {success && (
+                                    <div style={{ background: "rgba(0,180,100,0.05)", border: "1px solid rgba(0,180,100,0.1)", borderRadius: "12px", padding: "16px", color: "#00B464", fontSize: "14px", fontWeight: 700, marginBottom: "24px" }}>
+                                        ✅ Deployment Successful: PDF generated and downloaded.
+                                    </div>
+                                )}
+                                <form onSubmit={handleGenerate}>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                                        {selectedTemplate.fields.map(f => (
+                                            <div key={f.id}>
+                                                <label style={S.label}>{f.label}</label>
+                                                <input type={f.type} style={S.input} value={formData[f.id]} onChange={(e) => setFormData({...formData, [f.id]: e.target.value})} required />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button type="submit" disabled={generating} style={S.btn}>
+                                        {generating ? "Deploying..." : <><Download size={18} /> Download Strategic PDF</>}
+                                    </button>
+                                </form>
+                            </div>
+                        ) : (
+                            <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.5)", border: "2px dashed #E2E8F0", borderRadius: "32px", padding: "64px", textAlign: "center" }}>
+                                <FileText size={64} color="#E2E8F0" style={{ marginBottom: "24px" }} />
+                                <div style={{ fontSize: "16px", fontWeight: 700, color: "#94A3B8" }}>Select a strategic template to begin.</div>
+                            </div>
+                        )}
                     </div>
                 </div>
-            ) : (
-                requests.map(req => (
-                    <div key={req.id} style={S.card}>
-                        <div style={S.left}>
-                            <div style={S.icon(req.status)}>
-                                {req.status === "fulfilled" ? <CheckCircle size={24} /> : <Clock size={24} />}
-                            </div>
-                            <div>
-                                <div style={S.title}>{req.documentType}</div>
-                                <div style={S.meta}>
-                                    <span>Requested from <strong>{req.candidateName}</strong></span>
-                                    <span>•</span>
-                                    <span>{new Date(req.requestedAt?.toDate()).toLocaleDateString()}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                            <div style={S.statusBadge(req.status)}>
-                                {req.status === "fulfilled" ? "Fulfilled" : "Pending Candidate Upload"}
-                            </div>
-
-                            {req.status === "fulfilled" && req.docData?.url && (
-                                <a href={req.docData.url} target="_blank" rel="noopener noreferrer" style={S.btn}>
-                                    Download
-                                </a>
-                            )}
-                        </div>
-                    </div>
-                ))
             )}
         </div>
     );
 }
+

@@ -37,7 +37,6 @@ export default function CandidateNetwork() {
       setConnections(conns);
       setPendingIn(pending);
 
-      // Build status map
       const statusMap = {};
       await Promise.all(all.map(async c => {
         const status = await getConnectionStatus(currentUser.uid, c.uid);
@@ -106,70 +105,75 @@ export default function CandidateNetwork() {
     { id: "requests", label: "Requests", count: pendingIn.length || null },
   ];
 
+  const S = {
+    container: { maxWidth: "1200px", margin: "0 auto", fontFamily: C.font, color: "#1D1D1F" },
+    header: { marginBottom: "48px" },
+    title: { fontSize: "32px", fontWeight: 900, color: "#1D1D1F", fontFamily: "'Outfit', sans-serif", letterSpacing: "-1px", marginBottom: "8px" },
+    subtitle: { color: "#94A3B8", fontSize: "16px", fontWeight: 500 },
+    
+    tabBar: { display: "flex", gap: "12px", marginBottom: "40px", padding: "6px", background: "#F1F5F9", borderRadius: "20px", width: "fit-content" },
+    tabBtn: (active) => ({
+      padding: "12px 24px", borderRadius: "14px", border: "none",
+      background: active ? "#fff" : "transparent",
+      color: active ? "#0055FF" : "#64748B",
+      fontWeight: 800, fontSize: "13px", cursor: "pointer",
+      boxShadow: active ? "0 4px 12px rgba(0,0,0,0.05)" : "none",
+      transition: "all 0.2s", display: "flex", alignItems: "center", gap: "8px"
+    }),
+    badge: { background: "#0055FF", color: "#fff", borderRadius: "100px", padding: "2px 8px", fontSize: "10px", fontWeight: 900 },
+    
+    searchBox: { position: "relative", marginBottom: "40px" },
+    input: { width: "100%", background: "#fff", border: "1px solid #E2E8F0", borderRadius: "20px", padding: "18px 24px 18px 56px", fontSize: "15px", fontWeight: 600, color: "#1D1D1F", outline: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.02)", transition: "all 0.2s" },
+    searchIcon: { position: "absolute", left: "20px", top: "50%", transform: "translateY(-50%)", color: "#94A3B8", fontSize: "24px" },
+    
+    grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "24px" },
+    
+    requestItem: { background: "#fff", border: "1px solid #E2E8F0", borderRadius: "24px", padding: "24px 32px", display: "flex", alignItems: "center", gap: "24px", boxShadow: "0 4px 12px rgba(0,0,0,0.02)", marginBottom: "16px" },
+    avatar: { width: "56px", height: "56px", borderRadius: "18px", background: "linear-gradient(135deg, #0055FF, #00AAFF)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: 900, color: "#fff" },
+    
+    toast: { position: "fixed", bottom: "40px", right: "40px", zIndex: 1000, background: "#1D1D1F", color: "#fff", padding: "16px 32px", borderRadius: "16px", fontWeight: 800, fontSize: "14px", boxShadow: "0 24px 48px rgba(0,0,0,0.2)", display: "flex", alignItems: "center", gap: "12px" }
+  };
+
   return (
-    <div style={{ padding: "32px 36px", maxWidth: 960, margin: "0 auto" }}>
+    <div style={S.container}>
       {toast && (
-        <div style={{
-          position: "fixed", bottom: 28, right: 28, zIndex: 9999,
-          background: C.ink2, border: "1px solid rgba(26,111,232,.4)",
-          borderRadius: 12, padding: "14px 22px",
-          color: "#fff", fontWeight: 600, fontSize: 14,
-          boxShadow: "0 8px 32px rgba(0,0,0,.4)",
-        }}>{toast}</div>
+        <div style={S.toast}>
+          <span className="material-symbols-outlined" style={{ color: "#10B981" }}>check_circle</span>
+          {toast}
+        </div>
       )}
 
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ color: "#fff", fontSize: 26, fontWeight: 800, letterSpacing: "-0.5px", marginBottom: 6 }}>
-          Network
-        </h1>
-        <p style={{ color: C.silver, fontSize: 14 }}>Connect with other professionals on Worqit</p>
+      <div style={S.header}>
+        <h1 style={S.title}>Strategic Network</h1>
+        <p style={S.subtitle}>Connect with elite professionals in the UAE ecosystem.</p>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
+      <div style={S.tabBar}>
         {tabs.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            style={{
-              background: tab === t.id ? "rgba(26,111,232,.15)" : "rgba(255,255,255,.04)",
-              border: tab === t.id ? "1px solid rgba(26,111,232,.3)" : `1px solid ${C.line}`,
-              borderRadius: 8, padding: "8px 18px",
-              color: tab === t.id ? "#fff" : C.silver,
-              fontWeight: tab === t.id ? 700 : 500,
-              fontSize: 13, cursor: "pointer", fontFamily: C.font,
-              display: "flex", alignItems: "center", gap: 8,
-            }}
-          >
+          <button key={t.id} onClick={() => setTab(t.id)} style={S.tabBtn(tab === t.id)}>
             {t.label}
-            {t.count > 0 && (
-              <span style={{
-                background: C.grad, borderRadius: "100px",
-                padding: "1px 7px", fontSize: 11, fontWeight: 700, color: "#fff",
-              }}>{t.count}</span>
-            )}
+            {t.count > 0 && <span style={S.badge}>{t.count}</span>}
           </button>
         ))}
       </div>
 
       {tab === "discover" && (
         <>
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name, skill, or location…"
-            style={{
-              width: "100%", background: "rgba(255,255,255,.05)",
-              border: `1px solid ${C.line}`, borderRadius: 10,
-              padding: "11px 16px", color: "#fff", fontSize: 14,
-              fontFamily: C.font, outline: "none", marginBottom: 20,
-              boxSizing: "border-box",
-            }}
-          />
+          <div style={S.searchBox}>
+            <span className="material-symbols-outlined" style={S.searchIcon}>search</span>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Filter by expertise, organization, or location..."
+              style={S.input}
+              onFocus={e => e.target.style.borderColor = "#0055FF"}
+              onBlur={e => e.target.style.borderColor = "#E2E8F0"}
+            />
+          </div>
           {loading ? <LoadingGrid /> : filteredCandidates.length === 0 ? (
-            <Empty text="No candidates found." />
+            <Empty text="No professionals matching your search parameters." />
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 16 }}>
+            <div style={S.grid}>
               {filteredCandidates.map(c => (
                 <ProfileCard
                   key={c.uid}
@@ -186,15 +190,15 @@ export default function CandidateNetwork() {
 
       {tab === "connections" && (
         loading ? <LoadingGrid /> : connections.length === 0 ? (
-          <Empty text="No connections yet — discover and connect with candidates!" />
+          <Empty text="Your network is empty. Start discovering elite talent." />
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 16 }}>
+          <div style={S.grid}>
             {connections.map(c => (
               <ProfileCard
                 key={c.id}
                 user={c.user}
                 badgeText="Connected"
-                actionLabel="Message"
+                actionLabel="Direct Message"
                 onAction={() => window.location.href = `/candidate/messages`}
               />
             ))}
@@ -204,45 +208,26 @@ export default function CandidateNetwork() {
 
       {tab === "requests" && (
         loading ? <LoadingGrid /> : pendingIn.length === 0 ? (
-          <Empty text="No pending connection requests." />
+          <Empty text="No active connection requests pending." />
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
             {pendingIn.map(req => (
-              <div key={req.id} style={{
-                background: C.ink2, border: `1px solid ${C.line}`,
-                borderRadius: 14, padding: "18px 22px",
-                display: "flex", alignItems: "center", gap: 14,
-              }}>
-                <div style={{
-                  width: 44, height: 44, borderRadius: "50%",
-                  background: C.grad, display: "flex", alignItems: "center",
-                  justifyContent: "center", fontWeight: 800, fontSize: 16,
-                  color: "#fff", flexShrink: 0,
-                }}>
-                  {(req.user?.name || "?").charAt(0).toUpperCase()}
+              <div key={req.id} style={S.requestItem}>
+                <div style={S.avatar}>{(req.user?.name || "?").charAt(0).toUpperCase()}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: "#1D1D1F", fontWeight: 800, fontSize: "16px", marginBottom: "4px" }}>{req.user?.name || "Anonymous User"}</div>
+                  <div style={{ color: "#94A3B8", fontSize: "13px", fontWeight: 600 }}>{req.user?.headline || "Strategic Candidate"}</div>
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>{req.user?.name || "Unknown"}</div>
-                  <div style={{ color: C.silver, fontSize: 13 }}>{req.user?.headline || "Candidate"}</div>
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: "12px" }}>
                   <button
                     onClick={() => handleRespond(req.id, "accepted", req.user?.name)}
                     disabled={actionUid === req.id}
-                    style={{
-                      background: C.grad, border: "none", borderRadius: 8,
-                      padding: "8px 16px", color: "#fff", fontWeight: 700,
-                      fontSize: 13, cursor: "pointer", fontFamily: C.font,
-                    }}
+                    style={{ background: "#0055FF", border: "none", borderRadius: "12px", padding: "10px 24px", color: "#fff", fontWeight: 800, fontSize: "12px", cursor: "pointer", textTransform: "uppercase", letterSpacing: "1px" }}
                   >Accept</button>
                   <button
                     onClick={() => handleRespond(req.id, "declined", req.user?.name)}
                     disabled={actionUid === req.id}
-                    style={{
-                      background: "rgba(255,255,255,.05)", border: `1px solid ${C.line}`,
-                      borderRadius: 8, padding: "8px 16px", color: C.silver,
-                      fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: C.font,
-                    }}
+                    style={{ background: "#F1F5F9", border: "none", borderRadius: "12px", padding: "10px 24px", color: "#64748B", fontWeight: 800, fontSize: "12px", cursor: "pointer", textTransform: "uppercase", letterSpacing: "1px" }}
                   >Decline</button>
                 </div>
               </div>
@@ -256,9 +241,9 @@ export default function CandidateNetwork() {
 
 function LoadingGrid() {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 16 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "24px" }}>
       {[1, 2, 3, 4].map(i => (
-        <div key={i} style={{ background: C.ink2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 24, opacity: .5, height: 160 }} />
+        <div key={i} style={{ background: "#fff", border: "1px solid #E2E8F0", borderRadius: "32px", height: "240px", opacity: 0.5 }} />
       ))}
     </div>
   );
@@ -266,9 +251,11 @@ function LoadingGrid() {
 
 function Empty({ text }) {
   return (
-    <div style={{ textAlign: "center", padding: "60px 0", color: C.silver }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>🤝</div>
-      <div style={{ fontSize: 15 }}>{text}</div>
+    <div style={{ textAlign: "center", padding: "120px 40px", background: "#fff", borderRadius: "32px", border: "1px dashed #E2E8F0" }}>
+      <span className="material-symbols-outlined" style={{ fontSize: "64px", color: "#E2E8F0", marginBottom: "24px" }}>diversity_3</span>
+      <h3 style={{ fontSize: "20px", fontWeight: 800, color: "#1D1D1F", margin: "0 0 8px" }}>Network Activity</h3>
+      <p style={{ fontSize: "14px", color: "#94A3B8", fontWeight: 600 }}>{text}</p>
     </div>
   );
 }
+

@@ -25,77 +25,81 @@ export default function CandidateApplications() {
   }, [currentUser.uid]);
 
   const statusLabel = {
-    pending: "Pending Review",
-    viewed: "Viewed",
+    pending: "Under Review",
+    viewed: "Viewed by Hirer",
     accepted: "Accepted 🎉",
     rejected: "Not Selected",
   };
 
+  const S = {
+    container: { maxWidth: "1000px", margin: "0 auto", fontFamily: C.font, color: "#1D1D1F" },
+    header: { marginBottom: "48px" },
+    title: { fontSize: "32px", fontWeight: 900, color: "#1D1D1F", fontFamily: "'Outfit', sans-serif", letterSpacing: "-1px", marginBottom: "8px" },
+    subtitle: { color: "#94A3B8", fontSize: "16px", fontWeight: 500 },
+    
+    appCard: { background: "#fff", border: "1px solid #E2E8F0", borderRadius: "32px", padding: "32px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", boxShadow: "0 4px 12px rgba(0,0,0,0.02)", transition: "all 0.3s" },
+    jobTitle: { fontSize: "20px", fontWeight: 800, color: "#1D1D1F", marginBottom: "4px", fontFamily: "'Outfit', sans-serif" },
+    companyInfo: { fontSize: "14px", color: "#64748B", fontWeight: 600, display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" },
+    metaRow: { display: "flex", gap: "16px", flexWrap: "wrap", color: "#94A3B8", fontSize: "12px", fontWeight: 700 },
+    
+    statusBadge: (status) => {
+      const colors = {
+        pending: { bg: "rgba(0,85,255,0.06)", text: "#0055FF", border: "rgba(0,85,255,0.1)" },
+        viewed: { bg: "rgba(245,158,11,0.06)", text: "#F59E0B", border: "rgba(245,158,11,0.1)" },
+        accepted: { bg: "rgba(16,185,129,0.06)", text: "#10B981", border: "rgba(16,185,129,0.1)" },
+        rejected: { bg: "rgba(239,68,68,0.06)", text: "#EF4444", border: "rgba(239,68,68,0.1)" }
+      };
+      const c = colors[status] || colors.pending;
+      return { background: c.bg, color: c.text, border: `1px solid ${c.border}`, borderRadius: "100px", padding: "8px 20px", fontSize: "11px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "1px" };
+    },
+    
+    tag: { background: "#F1F5F9", borderRadius: "8px", padding: "4px 12px", fontSize: "11px", color: "#64748B", fontWeight: 700 },
+    empty: { textAlign: "center", padding: "120px 40px", background: "#fff", borderRadius: "32px", border: "1px dashed #E2E8F0" }
+  };
+
   return (
-    <div style={{ padding: "32px 36px", maxWidth: 860, margin: "0 auto" }}>
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ color: "#fff", fontSize: 26, fontWeight: 800, letterSpacing: "-0.5px", marginBottom: 6 }}>
-          My Applications
-        </h1>
-        <p style={{ color: C.silver, fontSize: 14 }}>
-          {applications.length} application{applications.length !== 1 ? "s" : ""} submitted
-        </p>
+    <div style={S.container}>
+      <div style={S.header}>
+        <h1 style={S.title}>Application Studio</h1>
+        <p style={S.subtitle}>Track your strategic deployments across the network.</p>
       </div>
 
       {loading ? (
-        <LoadingCards />
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          {[1, 2, 3].map(i => <div key={i} style={{ height: "140px", background: "#fff", borderRadius: "32px", border: "1px solid #E2E8F0", opacity: 0.5 }} />)}
+        </div>
       ) : applications.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px 0", color: C.silver }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
-          <div style={{ fontSize: 15, marginBottom: 8 }}>No applications yet</div>
-          <div style={{ fontSize: 13, opacity: .7 }}>Head to the Feed to apply to jobs</div>
+        <div style={S.empty}>
+          <span className="material-symbols-outlined" style={{ fontSize: "64px", color: "#E2E8F0", marginBottom: "24px" }}>assignment_turned_in</span>
+          <h3 style={{ fontSize: "20px", fontWeight: 800, color: "#1D1D1F", margin: "0 0 8px" }}>No Active Missions</h3>
+          <p style={{ fontSize: "14px", color: "#94A3B8", fontWeight: 600 }}>Head to the Job Feed to initiate your first deployment.</p>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
           {applications.map(app => {
             const job = app.job;
-            const sc = STATUS_COLORS[app.status] || STATUS_COLORS.pending;
-            const appliedDate = app.appliedAt?.toDate?.()?.toLocaleDateString?.() || "Recently";
+            const appliedDate = app.appliedAt?.toDate?.()?.toLocaleDateString?.("en-GB", { day: "numeric", month: "short", year: "numeric" }) || "Recent Deployment";
 
             return (
-              <div key={app.id} style={{
-                background: C.ink2, border: `1px solid ${C.line}`,
-                borderRadius: 16, padding: "22px 26px",
-                display: "flex", justifyContent: "space-between",
-                alignItems: "flex-start", gap: 16, flexWrap: "wrap",
-              }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
-                    <h3 style={{ color: "#fff", fontWeight: 700, fontSize: 16, margin: 0 }}>
-                      {job?.title || "Job no longer available"}
-                    </h3>
+              <div key={app.id} style={S.appCard} onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"} onMouseLeave={e => e.currentTarget.style.transform = "none"}>
+                <div style={{ flex: 1 }}>
+                  <h3 style={S.jobTitle}>{job?.title || "Archived Mission"}</h3>
+                  <div style={S.companyInfo}>
+                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>business</span>
+                    {job?.company || "Confidential Organization"}
                   </div>
-                  {job?.company && (
-                    <div style={{ color: C.silver, fontSize: 13, marginBottom: 4 }}>🏢 {job.company}</div>
-                  )}
-                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                    {job?.location && <span style={{ color: C.silver, fontSize: 13 }}>📍 {job.location}</span>}
-                    {job?.salary && <span style={{ color: C.cyan, fontSize: 13, fontWeight: 600 }}>💰 {job.salary}</span>}
-                    <span style={{ color: C.silver, fontSize: 12, opacity: .6 }}>Applied {appliedDate}</span>
+                  <div style={S.metaRow}>
+                    {job?.location && <span style={{ display: "flex", alignItems: "center", gap: "4px" }}><span className="material-symbols-outlined" style={{ fontSize: "14px" }}>location_on</span> {job.location}</span>}
+                    {job?.salary && <span style={{ display: "flex", alignItems: "center", gap: "4px", color: "#0055FF" }}><span className="material-symbols-outlined" style={{ fontSize: "14px" }}>payments</span> {job.salary}</span>}
+                    <span style={{ display: "flex", alignItems: "center", gap: "4px" }}><span className="material-symbols-outlined" style={{ fontSize: "14px" }}>schedule</span> Applied {appliedDate}</span>
                   </div>
-                  {/* Skills */}
                   {job?.skills?.length > 0 && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-                      {job.skills.slice(0, 4).map((s, i) => (
-                        <span key={i} style={{
-                          background: "rgba(26,111,232,.1)", border: "1px solid rgba(26,111,232,.25)",
-                          borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 600, color: C.cyan,
-                        }}>{s}</span>
-                      ))}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "16px" }}>
+                      {job.skills.slice(0, 3).map((s, i) => <span key={i} style={S.tag}>{s}</span>)}
                     </div>
                   )}
                 </div>
-                <div style={{
-                  background: sc.bg, border: `1px solid ${sc.border}`,
-                  borderRadius: 8, padding: "6px 14px",
-                  fontSize: 12, fontWeight: 700, color: sc.text,
-                  flexShrink: 0, whiteSpace: "nowrap",
-                }}>
+                <div style={S.statusBadge(app.status)}>
                   {statusLabel[app.status] || app.status}
                 </div>
               </div>
@@ -106,6 +110,7 @@ export default function CandidateApplications() {
     </div>
   );
 }
+
 
 function LoadingCards() {
   return (

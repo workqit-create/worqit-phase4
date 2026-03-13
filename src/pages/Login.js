@@ -1,6 +1,4 @@
 // src/pages/Login.js
-// Already connected to AuthContext — no changes needed.
-
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -27,7 +25,6 @@ export default function Login() {
     try {
       setError(""); setLoading(true);
       await signInEmail(email, password);
-      // Fetch the profile so we know the userType before navigating
       const profile = await refreshProfile();
       navigate(goHome(profile?.userType));
     } catch {
@@ -66,12 +63,12 @@ export default function Login() {
         {/* Back to Home */}
         <Link to="/" style={{
           display: "inline-flex", alignItems: "center", gap: "6px",
-          color: "#7A90B8", fontSize: "13px", fontWeight: 600,
+          color: "#6E6E73", fontSize: "13px", fontWeight: 600,
           textDecoration: "none", marginBottom: "24px",
           transition: "color .2s",
         }}
-          onMouseEnter={e => e.currentTarget.style.color = "#00AAFF"}
-          onMouseLeave={e => e.currentTarget.style.color = "#7A90B8"}
+          onMouseEnter={e => e.currentTarget.style.color = "#0055FF"}
+          onMouseLeave={e => e.currentTarget.style.color = "#6E6E73"}
         >← Back to Home</Link>
 
         {/* Real Worqit stacked logo */}
@@ -86,7 +83,9 @@ export default function Login() {
         {resetSent && <div style={S.success}>Reset email sent — check your inbox.</div>}
 
         {/* Google sign in */}
-        <button style={S.googleBtn} onClick={handleGoogle} disabled={loading}>
+        <button style={S.googleBtn} onClick={handleGoogle} disabled={loading}
+          onMouseEnter={e => e.currentTarget.style.background = "rgba(0,0,0,.03)"}
+          onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
           <GoogleIcon />
           Continue with Google
         </button>
@@ -102,8 +101,8 @@ export default function Login() {
             <label style={S.label}>Email Address</label>
             <input style={S.input} type="email" placeholder="your@email.com"
               value={email} onChange={e => setEmail(e.target.value)} required
-              onFocus={e => e.target.style.borderColor = "rgba(26,111,232,.7)"}
-              onBlur={e => e.target.style.borderColor = "rgba(255,255,255,.08)"} />
+              onFocus={e => e.target.style.borderColor = "#0055FF"}
+              onBlur={e => e.target.style.borderColor = "rgba(0,0,0,.08)"} />
           </div>
 
           <div style={S.field}>
@@ -115,13 +114,13 @@ export default function Login() {
             </div>
             <input style={S.input} type="password" placeholder="Your password"
               value={password} onChange={e => setPassword(e.target.value)} required
-              onFocus={e => e.target.style.borderColor = "rgba(26,111,232,.7)"}
-              onBlur={e => e.target.style.borderColor = "rgba(255,255,255,.08)"} />
+              onFocus={e => e.target.style.borderColor = "#0055FF"}
+              onBlur={e => e.target.style.borderColor = "rgba(0,0,0,.08)"} />
           </div>
 
           <button style={S.submitBtn} type="submit" disabled={loading}
-            onMouseEnter={e => e.currentTarget.style.opacity = ".88"}
-            onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+            onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
+            onMouseLeave={e => e.currentTarget.style.transform = "none"}>
             {loading ? "Signing in..." : "Sign In to Worqit"}
           </button>
         </form>
@@ -148,7 +147,7 @@ function GoogleIcon() {
 
 const S = {
   page: {
-    minHeight: "100vh", background: "#060C1A",
+    minHeight: "100vh", background: "#FFFFFF",
     display: "flex", alignItems: "center", justifyContent: "center",
     padding: "40px 24px", fontFamily: "'Plus Jakarta Sans',sans-serif",
     position: "relative", overflow: "hidden",
@@ -156,58 +155,58 @@ const S = {
   glow: {
     position: "absolute", top: "-200px", left: "50%", transform: "translateX(-50%)",
     width: "600px", height: "600px", borderRadius: "50%",
-    background: "radial-gradient(circle,rgba(0,53,204,.35) 0%,transparent 70%)",
+    background: "radial-gradient(circle,rgba(0,85,255,.1) 0%,transparent 70%)",
     filter: "blur(80px)", pointerEvents: "none",
   },
   card: {
-    background: "#0A1228", border: "1px solid rgba(26,111,232,.15)",
+    background: "#FFFFFF", border: "1px solid rgba(0,0,0,.08)",
     borderRadius: "24px", padding: "48px", width: "100%", maxWidth: "440px",
-    position: "relative", zIndex: 1, boxShadow: "0 24px 80px rgba(0,53,204,.2)",
+    position: "relative", zIndex: 1, boxShadow: "0 24px 80px rgba(0,0,0,.05)",
   },
   logoWrap: { display: "flex", justifyContent: "center", marginBottom: "32px" },
   logo: {
     height: "64px", width: "auto", objectFit: "contain",
-    filter: "drop-shadow(0 4px 16px rgba(26,111,232,.3))"
+    filter: "drop-shadow(0 4px 16px rgba(0,85,255,.15))"
   },
-  h1: { fontWeight: 800, fontSize: "28px", color: "#fff", marginBottom: "8px", textAlign: "center", letterSpacing: "-1px" },
-  sub: { fontSize: "14px", color: "#7A90B8", textAlign: "center", marginBottom: "32px" },
+  h1: { fontWeight: 800, fontSize: "28px", color: "#1D1D1F", marginBottom: "8px", textAlign: "center", letterSpacing: "-1px" },
+  sub: { fontSize: "14px", color: "#6E6E73", textAlign: "center", marginBottom: "32px" },
   error: {
-    background: "rgba(220,50,50,.1)", border: "1px solid rgba(220,50,50,.3)",
-    borderRadius: "10px", padding: "12px 16px", color: "#FC8181", fontSize: "13px", marginBottom: "20px",
+    background: "rgba(220,50,50,.05)", border: "1px solid rgba(220,50,50,.2)",
+    borderRadius: "10px", padding: "12px 16px", color: "#E53E3E", fontSize: "13px", marginBottom: "20px",
   },
   success: {
-    background: "rgba(0,170,255,.08)", border: "1px solid rgba(0,170,255,.3)",
+    background: "rgba(0,170,255,.05)", border: "1px solid rgba(0,170,255,.2)",
     borderRadius: "10px", padding: "12px 16px", color: "#00AAFF", fontSize: "13px", marginBottom: "20px",
   },
   googleBtn: {
-    width: "100%", background: "rgba(255,255,255,.05)",
-    border: "1px solid rgba(255,255,255,.09)", borderRadius: "10px", padding: "13px",
+    width: "100%", background: "#fff",
+    border: "1px solid rgba(0,0,0,.08)", borderRadius: "10px", padding: "13px",
     display: "flex", alignItems: "center", justifyContent: "center", gap: "12px",
-    color: "#fff", fontSize: "14px", fontWeight: 600, cursor: "pointer", marginBottom: "20px",
-    fontFamily: "'Plus Jakarta Sans',sans-serif",
+    color: "#1D1D1F", fontSize: "14px", fontWeight: 600, cursor: "pointer", marginBottom: "20px",
+    fontFamily: "'Plus Jakarta Sans',sans-serif", transition: "all .2s",
   },
   divider: { display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" },
-  divLine: { flex: 1, height: "1px", background: "rgba(255,255,255,.07)" },
-  divText: { fontSize: "12px", color: "#4A5568", whiteSpace: "nowrap" },
+  divLine: { flex: 1, height: "1px", background: "rgba(0,0,0,.06)" },
+  divText: { fontSize: "12px", color: "#8E8E93", whiteSpace: "nowrap" },
   form: { display: "flex", flexDirection: "column", gap: "16px" },
   field: { display: "flex", flexDirection: "column", gap: "6px" },
-  label: { fontSize: "11px", fontWeight: 700, color: "#7A90B8", letterSpacing: ".5px", textTransform: "uppercase" },
+  label: { fontSize: "11px", fontWeight: 700, color: "#6E6E73", letterSpacing: ".5px", textTransform: "uppercase" },
   input: {
-    background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.08)",
-    borderRadius: "10px", padding: "13px 16px", fontSize: "14px", color: "#fff",
+    background: "#fff", border: "1px solid rgba(0,0,0,.08)",
+    borderRadius: "10px", padding: "13px 16px", fontSize: "14px", color: "#1D1D1F",
     outline: "none", fontFamily: "'Plus Jakarta Sans',sans-serif", transition: "border-color .2s",
   },
   forgotBtn: {
-    background: "none", border: "none", color: "#00AAFF", fontSize: "12px",
+    background: "none", border: "none", color: "#0055FF", fontSize: "12px",
     cursor: "pointer", fontWeight: 600, fontFamily: "'Plus Jakarta Sans',sans-serif",
   },
   submitBtn: {
-    background: "linear-gradient(135deg,#00AAFF 0%,#1A6FE8 50%,#0035CC 100%)",
+    background: "linear-gradient(135deg,#0055FF 0%,#00AAFF 100%)",
     color: "#fff", border: "none", borderRadius: "10px", padding: "14px",
     fontSize: "15px", fontWeight: 700, cursor: "pointer",
     fontFamily: "'Plus Jakarta Sans',sans-serif",
-    boxShadow: "0 4px 24px rgba(26,111,232,.4)", transition: "opacity .2s",
+    boxShadow: "0 4px 24px rgba(0,85,255,.25)", transition: "all .2s",
   },
-  signupLink: { textAlign: "center", fontSize: "14px", color: "#7A90B8", marginTop: "24px" },
-  link: { color: "#00AAFF", textDecoration: "none", fontWeight: 600 },
+  signupLink: { textAlign: "center", fontSize: "14px", color: "#6E6E73", marginTop: "24px" },
+  link: { color: "#0055FF", textDecoration: "none", fontWeight: 600 },
 };

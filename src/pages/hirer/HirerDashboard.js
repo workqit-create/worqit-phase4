@@ -1,13 +1,22 @@
-// src/pages/hirer/HirerDashboard.js — Phase 4: routing fix + Founding100
+// src/pages/hirer/HirerDashboard.js
+// ═══════════════════════════════════════════════════════
+//  ULTRA-PREMIUM REBUILD (STITCH REFERENCE)
+//  + OFFICIAL LOGO INTEGRATION
+//  + Terminology: Terminate Session → Sign Out
+//  + Top Navigation Utility: Home, Settings, Quick Stats
+//  + Refined Color Grading & Spacing
+// ═══════════════════════════════════════════════════════
+
 import React, { useState, useEffect } from "react";
-import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { C } from "../shared/theme";
-import { LOGO_HORIZ } from "../../assets/logos";
 import { getUserConversations } from "../../services/messageService";
 import NotificationDropdown from "../../components/NotificationDropdown";
 import { subscribeToNotifications } from "../../services/notificationService";
 import { requestPushPermission } from "../../services/pushNotificationService";
+import { getHirerJobs } from "../../services/jobService";
+import { LOGO_HORIZ } from "../../assets/logos";
 
 import HirerPostJob from "./PostJob";
 import HirerMyJobs from "./MyJobs";
@@ -20,19 +29,6 @@ import ComplianceTemplates from "./ComplianceTemplates";
 import Billing from "./Billing";
 import HirerAnalytics from "./Analytics";
 
-const NAV = [
-  { path: "analytics", label: "Dashboard", icon: "📊" },
-  { path: "", label: "Post a Job", icon: "✏️" },
-  { path: "jobs", label: "My Jobs", icon: "💼" },
-  { path: "discover", label: "Discover", icon: "🔍" },
-  { path: "messages", label: "Messages", icon: "💬" },
-  { path: "documents", label: "Documents", icon: "📁" },
-  { path: "templates", label: "Templates", icon: "📄" },
-  { path: "founding", label: "Founding 100", icon: "🏆" },
-  { path: "billing", label: "Plans & Billing", icon: "💳" },
-  { path: "profile", label: "Profile", icon: "🏢" },
-];
-
 export default function HirerDashboard() {
   const { userProfile, logout, currentUser } = useAuth();
   const navigate = useNavigate();
@@ -40,11 +36,12 @@ export default function HirerDashboard() {
   const [unread, setUnread] = useState(0);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [showNotifs, setShowNotifs] = useState(false);
+  const [jobs, setJobs] = useState([]);
 
-  // Request Push Notification Permission
   useEffect(() => {
     if (currentUser?.uid) {
       requestPushPermission(currentUser.uid);
+      getHirerJobs(currentUser.uid).then(setJobs);
     }
   }, [currentUser]);
 
@@ -56,7 +53,6 @@ export default function HirerDashboard() {
     u(); const iv = setInterval(u, 15000); return () => clearInterval(iv);
   }, [currentUser]);
 
-  // Notifications
   useEffect(() => {
     if (!currentUser) return;
     const unsub = subscribeToNotifications(currentUser.uid, (notifs) => {
@@ -65,137 +61,238 @@ export default function HirerDashboard() {
     return () => unsub();
   }, [currentUser]);
 
-  // Fix: strip /hirer/ prefix correctly
-  const seg = location.pathname.replace(/^\/hirer\/?/, "").split("/")[0] || "";
+  const activePath = location.pathname.replace(/^\/hirer\/?/, "").split("/")[0] || "";
   const initials = (userProfile?.companyName || userProfile?.name || "H").charAt(0).toUpperCase();
 
+  // ── Ultra-Premium Style System ──
+  const S = {
+    shell: {
+      display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden",
+      fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#1D1D1F",
+      background: `radial-gradient(at 0% 0%, rgba(0, 85, 255, 0.04) 0px, transparent 50%),
+                   radial-gradient(at 100% 100%, rgba(245, 166, 35, 0.03) 0px, transparent 50%),
+                   #fcfcfd`,
+    },
+    header: {
+      height: "90px", display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "0 48px", zIndex: 100, flexShrink: 0,
+      background: "rgba(255, 255, 255, 0.7)", backdropFilter: "blur(24px)",
+      borderBottom: "1px solid rgba(0, 0, 0, 0.06)",
+      boxShadow: "0 1px 0 rgba(255,255,255,0.8)",
+    },
+    logoArea: { display: "flex", alignItems: "center", gap: "40px" },
+    logo: { height: "32px", width: "auto", cursor: "pointer", transition: "transform 0.3s ease" },
+    topNav: { display: "flex", alignItems: "center", gap: "8px", marginLeft: "20px" },
+    topLink: (active) => ({
+      padding: "8px 16px", borderRadius: "100px", fontSize: "13px", fontWeight: 700,
+      color: active ? "#0055FF" : "#6E6E73", textDecoration: "none", transition: "all 0.2s",
+      background: active ? "rgba(0, 85, 255, 0.06)" : "transparent",
+    }),
+    searchWrap: { position: "relative", width: "400px" },
+    searchInput: {
+      width: "100%", background: "#fff", border: "1px solid #E2E8F0",
+      borderRadius: "14px", padding: "10px 16px 10px 44px", fontSize: "13px", fontWeight: 600,
+      outline: "none", transition: "all 0.3s ease",
+    },
+    headerActions: { display: "flex", alignItems: "center", gap: "24px" },
+    actionBtn: {
+      width: "44px", height: "44px", display: "flex", alignItems: "center", justifyContent: "center",
+      background: "#fff", border: "1px solid #E2E8F0", borderRadius: "12px", cursor: "pointer",
+      color: "#6E6E73", transition: "all 0.2s"
+    },
+    notifDot: {
+      position: "absolute", top: "10px", right: "10px", width: "10px", height: "10px",
+      background: "#0055FF", borderRadius: "50%", border: "2px solid #fff",
+      boxShadow: "0 0 12px rgba(0, 85, 255, 0.5)"
+    },
+    profileSection: {
+      display: "flex", alignItems: "center", gap: "16px", paddingLeft: "24px",
+      borderLeft: "1px solid rgba(0,0,0,0.08)"
+    },
+    avatar: {
+      width: "44px", height: "44px", borderRadius: "50%", background: "linear-gradient(135deg, #0055FF, #00AAFF)",
+      display: "flex", alignItems: "center", justifyContent: "center", color: "#fff",
+      fontWeight: 900, fontSize: "16px", cursor: "pointer", boxShadow: "0 4px 12px rgba(0, 85, 255, 0.2)"
+    },
+    body: { display: "flex", flex: 1, overflow: "hidden" },
+    sidebar: {
+      width: "300px", background: "rgba(255, 255, 255, 0.4)", backdropFilter: "blur(12px)",
+      borderRight: "1px solid rgba(0, 0, 0, 0.05)", display: "flex", flexDirection: "column",
+      padding: "32px 24px"
+    },
+    main: { flex: 1, overflowY: "auto", padding: "48px 64px", scrollBehavior: "smooth" },
+    sideHeading: { fontSize: "10px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "2.5px", color: "#94A3B8", marginBottom: "16px", paddingLeft: "12px" },
+    navItem: (active, gold) => ({
+      display: "flex", alignItems: "center", gap: "12px", padding: "12px 16px",
+      borderRadius: "12px", cursor: "pointer", transition: "all 0.3s",
+      color: active ? (gold ? "#D97706" : "#0055FF") : (gold ? "#F5A623" : "#6E6E73"),
+      fontWeight: active ? 800 : 600, fontSize: "14px",
+      background: active ? (gold ? "rgba(245, 166, 35, 0.08)" : "rgba(0, 85, 255, 0.08)") : "transparent",
+      marginBottom: "2px"
+    }),
+    quickJob: (active) => ({
+      padding: "16px", borderRadius: "14px", cursor: "pointer", transition: "all 0.2s",
+      background: active ? "#fff" : "transparent",
+      border: `1px solid ${active ? "rgba(0, 85, 255, 0.1)" : "transparent"}`,
+      boxShadow: active ? "0 12px 24px -8px rgba(0, 0, 0, 0.05)" : "none",
+      marginBottom: "12px"
+    }),
+    ctaBtn: {
+      width: "100%", background: "#1D1D1F", color: "#fff", fontWeight: 800,
+      padding: "14px", borderRadius: "14px", border: "none", cursor: "pointer",
+      display: "flex", alignItems: "center", justifyContent: "center", gap: "10px",
+      transition: "all 0.2s", textTransform: "uppercase", letterSpacing: "1.5px", fontSize: "11px"
+    },
+    signoutBtn: {
+      width: "100%", marginTop: "12px", background: "rgba(0,0,0,0.03)", border: "1px solid rgba(0,0,0,0.05)",
+      color: "#6E6E73", fontSize: "11px", fontWeight: 800, textTransform: "uppercase",
+      letterSpacing: "1.5px", padding: "12px", borderRadius: "12px", cursor: "pointer", transition: "all 0.2s"
+    }
+  };
+
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: C.ink, fontFamily: C.font }}>
-      {/* SIDEBAR */}
-      <div style={{ width: 280, borderRight: `1px solid ${C.line}`, background: C.ink, display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh" }} className="wq-sidebar">
-        <div style={{ padding: "20px 20px 16px", borderBottom: `1px solid ${C.line}`, display: "flex", alignItems: "center", gap: 10 }}>
-          <img src={LOGO_HORIZ} alt="Worqit" style={{ height: 36, width: "auto" }} />
-          <div style={{ marginLeft: "auto", position: "relative" }}>
-            <div
-              style={{ cursor: "pointer", display: "flex", alignItems: "center" }}
-              onClick={() => setShowNotifs(!showNotifs)}
-            >
-              <span style={{ fontSize: 20 }}>🔔</span>
-              {unreadNotifs > 0 && (
-                <span style={{ position: "absolute", top: -4, right: -8, background: C.grad, borderRadius: "100px", padding: "1px 5px", fontSize: 10, fontWeight: 700, color: "#fff" }}>
-                  {unreadNotifs > 9 ? "9+" : unreadNotifs}
-                </span>
+    <div style={S.shell}>
+      {/* TOP NAVIGATION */}
+      <header style={S.header}>
+        <div style={S.logoArea}>
+          <img 
+            src={LOGO_HORIZ} 
+            alt="Worqit" 
+            style={S.logo} 
+            onClick={() => navigate("/hirer")}
+            onMouseEnter={e => e.currentTarget.style.transform = "scale(1.02)"}
+            onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+          />
+          
+          <nav style={S.topNav}>
+            <Link to="/hirer" style={S.topLink(activePath === "")}>Overview</Link>
+            <Link to="/hirer/analytics" style={S.topLink(activePath === "analytics")}>Analytics</Link>
+            <Link to="/hirer/discover" style={S.topLink(activePath === "discover")}>Talent</Link>
+          </nav>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
+          <div style={S.searchWrap}>
+            <span className="material-symbols-outlined" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#94A3B8", fontSize: "18px" }}>search</span>
+            <input 
+              style={S.searchInput} 
+              placeholder="Search strategic roles or candidates..." 
+              type="text" 
+              onFocus={e => { e.currentTarget.style.borderColor = "#0055FF"; e.currentTarget.style.boxShadow = "0 0 0 4px rgba(0,85,255,0.05)"; }}
+              onBlur={e => { e.currentTarget.style.borderColor = "#E2E8F0"; e.currentTarget.style.boxShadow = "none"; }}
+            />
+          </div>
+
+          <div style={S.headerActions}>
+            <button style={S.actionBtn} onClick={() => navigate("/hirer/messages")} title="Messages">
+              <span className="material-symbols-outlined">chat_bubble</span>
+            </button>
+            <button style={{ ...S.actionBtn, position: "relative" }} onClick={() => setShowNotifs(!showNotifs)} title="Notifications">
+              <span className="material-symbols-outlined">notifications</span>
+              {unreadNotifs > 0 && <div style={S.notifDot} />}
+              {showNotifs && (
+                <div style={{ position: "absolute", top: "54px", right: 0, zIndex: 200, width: "350px" }}>
+                  <NotificationDropdown userId={currentUser?.uid} onClose={() => setShowNotifs(false)} />
+                </div>
               )}
+            </button>
+            <button style={S.actionBtn} onClick={() => navigate("/hirer/profile")} title="Settings">
+              <span className="material-symbols-outlined">settings</span>
+            </button>
+          </div>
+
+          <div style={S.profileSection}>
+            <div style={{ textAlign: "right" }}>
+              <p style={{ fontSize: "13px", fontWeight: 800, margin: 0 }}>{userProfile?.companyName || "Elevate Studio"}</p>
+              <p style={{ fontSize: "9px", fontWeight: 900, color: "#0055FF", textTransform: "uppercase", letterSpacing: "1.5px", margin: 0 }}>Enterprise Luxe</p>
             </div>
-            {showNotifs && (
-              <div onClick={e => e.stopPropagation()}>
-                <NotificationDropdown
-                  userId={currentUser?.uid}
-                  onClose={() => setShowNotifs(false)}
-                />
+            <div style={S.avatar} onClick={() => navigate("/hirer/profile")}>
+              {initials}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div style={S.body}>
+        {/* SIDEBAR */}
+        <aside style={S.sidebar}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", paddingLeft: "12px" }}>
+            <h3 style={{ ...S.sideHeading, marginBottom: 0 }}>Active Cycles</h3>
+            <button onClick={() => navigate("/hirer")} style={{ background: "none", border: "none", color: "#0055FF", cursor: "pointer", display: "flex", alignItems: "center" }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>add_circle</span>
+            </button>
+          </div>
+
+          <div style={{ marginBottom: "32px" }}>
+            {jobs.slice(0, 3).map((job, idx) => (
+              <div key={job.id} onClick={() => navigate(`/hirer/jobs`)} style={S.quickJob(idx === 0)}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                  <h4 style={{ fontSize: "13px", fontWeight: 700, margin: 0, color: idx === 0 ? "#1D1D1F" : "#6E6E73" }}>{job.title}</h4>
+                  {idx === 0 && <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#0055FF", boxShadow: "0 0 8px #0055FF" }} />}
+                </div>
+                <p style={{ fontSize: "10px", fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "1px", margin: 0 }}>
+                  {job.status === 'open' ? 'Live Listing' : 'Draft'}
+                </p>
+              </div>
+            ))}
+            {jobs.length === 0 && (
+              <div style={{ padding: "20px", borderRadius: "14px", border: "1px dashed rgba(0,0,0,0.1)", textAlign: "center" }}>
+                <p style={{ fontSize: "11px", fontWeight: 700, color: "#94A3B8", margin: 0 }}>No active postings</p>
               </div>
             )}
           </div>
-        </div>
 
-        <div style={{ padding: "10px 16px 0" }}>
-          <div style={{ background: "rgba(26,111,232,.1)", border: "1px solid rgba(26,111,232,.25)", borderRadius: 8, padding: "6px 12px", fontSize: 11, fontWeight: 700, color: C.cyan, display: "inline-flex", alignItems: "center", gap: 6 }}>
-            🏢 Hirer Account
-            {userProfile?.isFounding100 && <span style={{ background: "rgba(255,170,0,.2)", border: "1px solid rgba(255,170,0,.4)", borderRadius: 4, padding: "1px 6px", color: "#FFAA00", fontSize: 10 }}>Founding 100</span>}
-          </div>
-        </div>
-
-        <nav style={{ flex: 1, padding: "14px 12px", display: "flex", flexDirection: "column", gap: 4 }}>
-          {NAV.map(item => {
-            const active = seg === item.path;
-            return (
-              <div key={item.path} onClick={() => navigate(`/hirer/${item.path}`)}
-                style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, cursor: "pointer", transition: "all .15s", background: active ? "rgba(26,111,232,.15)" : "transparent", border: active ? "1px solid rgba(26,111,232,.25)" : "1px solid transparent", color: active ? "#fff" : C.silver, fontWeight: active ? 700 : 500, fontSize: 14 }}>
-                <span style={{ fontSize: 16 }}>{item.icon}</span>
-                {item.label}
-                {item.path === "messages" && unread > 0 && <span style={{ marginLeft: "auto", background: C.grad, borderRadius: 100, padding: "1px 7px", fontSize: 11, fontWeight: 700, color: "#fff" }}>{unread > 9 ? "9+" : unread}</span>}
-                {item.path === "founding" && userProfile?.isFounding100 && <span style={{ marginLeft: "auto", fontSize: 14 }}>🏆</span>}
+          <div style={{ flex: 1 }}>
+            <div style={S.sideHeading}>Management</div>
+            {[
+              { path: "jobs", label: "Strategic Postings", icon: "work" },
+              { path: "discover", label: "Elite Talent", icon: "person_search" },
+              { path: "messages", label: "Direct Messages", icon: "chat_bubble", badge: unread },
+              { path: "documents", label: "Document Hub", icon: "folder_open" },
+              { path: "templates", label: "Compliance Docs", icon: "verified_user" },
+              { path: "founding", label: "Founding Partner", icon: "workspace_premium", gold: true },
+              { path: "billing", label: "Enterprise Luxe", icon: "credit_card" },
+            ].map(item => (
+              <div key={item.path} onClick={() => navigate(`/hirer/${item.path}`)} style={S.navItem(activePath === item.path, item.gold)}>
+                <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>{item.icon}</span>
+                <span style={{ flex: 1 }}>{item.label}</span>
+                {item.badge > 0 && <span style={{ background: "#0055FF", color: "#fff", fontSize: "10px", fontWeight: 900, padding: "2px 8px", borderRadius: "10px" }}>{item.badge}</span>}
               </div>
-            );
-          })}
-        </nav>
-
-        <div style={{ padding: "16px 12px", borderTop: `1px solid ${C.line}` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: "50%", background: C.grad, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, color: "#fff", flexShrink: 0 }}>{initials}</div>
-            <div style={{ overflow: "hidden" }}>
-              <div style={{ color: "#fff", fontWeight: 700, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{userProfile?.companyName || userProfile?.name || "Hirer"}</div>
-              <div style={{ color: C.silver, fontSize: 11 }}>Company</div>
-            </div>
+            ))}
           </div>
-          <button onClick={logout} style={{ width: "100%", background: "rgba(255,255,255,.04)", border: `1px solid ${C.line}`, borderRadius: 8, padding: "8px 0", color: C.silver, fontSize: 13, cursor: "pointer", fontFamily: C.font, fontWeight: 600 }}>Sign Out</button>
-        </div>
-      </div>
 
-      {/* MAIN */}
-      <div style={{ flex: 1, overflow: "auto" }} className="wq-main-content">
-        <Routes>
-          <Route path="/" element={<HirerPostJob />} />
-          <Route path="/jobs" element={<HirerMyJobs />} />
-          <Route path="/discover" element={<HirerDiscover />} />
-          <Route path="/messages" element={<HirerMessages />} />
-          <Route path="/documents" element={<DocumentTracker />} />
-          <Route path="/templates" element={<ComplianceTemplates />} />
-          <Route path="/founding" element={<Founding100 />} />
-          <Route path="/analytics" element={<HirerAnalytics />} />
-          <Route path="/billing" element={<Billing />} />
-          <Route path="/profile" element={<HirerProfile />} />
-        </Routes>
-      </div>
-
-      {/* MOBILE BOTTOM NAV */}
-      <div className="wq-bottom-nav" style={{
-        position: "fixed", bottom: 0, left: 0, right: 0,
-        background: "rgba(6,12,26,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
-        borderTop: `1px solid ${C.line}`,
-        display: "flex", justifyContent: "space-around", alignItems: "center",
-        padding: "8px 0", paddingBottom: "max(8px, env(safe-area-inset-bottom))",
-        zIndex: 999
-      }}>
-        {NAV.filter(n => ["jobs", "discover", "messages", "profile"].includes(n.path)).map(item => {
-          const active = seg === item.path;
-          return (
-            <div
-              key={item.path}
-              onClick={() => navigate(`/hirer/${item.path}`)}
-              style={{
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-                color: active ? "#fff" : C.silver, padding: "8px 12px", borderRadius: 8,
-                position: "relative", cursor: "pointer"
-              }}
+          <div style={{ marginTop: "auto", paddingTop: "24px" }}>
+            <button onClick={() => navigate("/hirer")} style={S.ctaBtn}>
+              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>post_add</span>
+              Publish Opportunity
+            </button>
+            <button 
+              onClick={logout} 
+              style={S.signoutBtn}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(220,50,50,0.05)"; e.currentTarget.style.color = "#E53E3E"; e.currentTarget.style.borderColor = "rgba(220,50,50,0.1)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,0,0,0.03)"; e.currentTarget.style.color = "#6E6E73"; e.currentTarget.style.borderColor = "rgba(0,0,0,0.05)"; }}
             >
-              <span style={{ fontSize: 20 }}>{item.icon}</span>
-              <span style={{ fontSize: 10, fontWeight: 600 }}>{item.label}</span>
-              {item.path === "messages" && unread > 0 && (
-                <span style={{
-                  position: "absolute", top: 2, right: 6,
-                  background: C.red, color: "#fff", fontSize: 10, fontWeight: 800,
-                  minWidth: 16, height: 16, borderRadius: 8,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  padding: "0 4px"
-                }}>
-                  {unread > 9 ? "9+" : unread}
-                </span>
-              )}
-            </div>
-          );
-        })}
+              Sign Out
+            </button>
+          </div>
+        </aside>
+
+        {/* MAIN CONTENT */}
+        <main style={S.main}>
+          <Routes>
+            <Route path="/" element={<HirerPostJob />} />
+            <Route path="/jobs" element={<HirerMyJobs />} />
+            <Route path="/discover" element={<HirerDiscover />} />
+            <Route path="/messages" element={<HirerMessages />} />
+            <Route path="/documents" element={<DocumentTracker />} />
+            <Route path="/templates" element={<ComplianceTemplates />} />
+            <Route path="/founding" element={<Founding100 />} />
+            <Route path="/analytics" element={<HirerAnalytics />} />
+            <Route path="/billing" element={<Billing />} />
+            <Route path="/profile" element={<HirerProfile />} />
+          </Routes>
+        </main>
       </div>
-
-      <style>{`
-        .wq-bottom-nav { display: none !important; }
-
-        @media(max-width:768px){
-          .wq-sidebar { display: none !important; }
-          .wq-bottom-nav { display: flex !important; }
-          .wq-main-content { padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important; }
-        }
-      `}</style>
     </div>
   );
 }
