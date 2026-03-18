@@ -33,16 +33,23 @@ export default function HirerDiscover() {
 
   useEffect(() => {
     async function load() {
+      let all = [];
       try {
-        const [all, savedRef] = await Promise.all([
-          getAllCandidates(currentUser.uid),
-          getDoc(doc(db, "savedSearches", currentUser.uid))
-        ]);
-        setCandidates(all);
+        all = await getAllCandidates(currentUser.uid);
+      } catch (e) {
+        console.error("Error loading candidates:", e);
+      }
+
+      try {
+        const savedRef = await getDoc(doc(db, "savedSearches", currentUser.uid));
         if (savedRef.exists()) {
           setSavedSearches(savedRef.data().searches || []);
         }
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        console.error("Error loading saved searches:", e);
+      }
+
+      setCandidates(all);
       setLoading(false);
     }
     load();
