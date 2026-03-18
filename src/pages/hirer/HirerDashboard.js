@@ -118,7 +118,7 @@ export default function HirerDashboard() {
     sidebar: {
       width: "300px", background: "rgba(255, 255, 255, 0.4)", backdropFilter: "blur(12px)",
       borderRight: "1px solid rgba(0, 0, 0, 0.05)", display: "flex", flexDirection: "column",
-      padding: "32px 24px"
+      padding: "32px 24px", overflowY: "auto"
     },
     main: { flex: 1, overflowY: "auto", padding: "48px 64px", scrollBehavior: "smooth" },
     sideHeading: { fontSize: "10px", fontWeight: 900, textTransform: "uppercase", letterSpacing: "2.5px", color: "#94A3B8", marginBottom: "16px", paddingLeft: "12px" },
