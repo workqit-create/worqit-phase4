@@ -101,8 +101,9 @@ export async function getPendingRequests(uid) {
 // ── GET ALL CANDIDATES (for discovery — exclude self) ──
 // ── GET ALL CANDIDATES (for discovery — exclude self) ──
 export async function getAllCandidates(excludeUid) {
-  const snap = await getDocs(collection(db, "users"));
+  const q = query(collection(db, "users"), where("userType", "==", "candidate"));
+  const snap = await getDocs(q);
   return snap.docs
     .map(d => ({ uid: d.id, ...d.data() }))
-    .filter(u => u.uid !== excludeUid && (u.userType?.toLowerCase() === "candidate" || u.role?.toLowerCase() === "candidate"));
+    .filter(u => u.uid !== excludeUid);
 }

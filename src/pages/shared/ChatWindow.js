@@ -8,6 +8,9 @@ import { C } from "./theme";
 import { useNavigate } from "react-router-dom";
 import { sendMessage, listenToMessages, markConversationRead } from "../../services/messageService";
 import { createDocumentRequest } from "../../services/documentService";
+import { Paperclip } from "lucide-react";
+import { storage } from "../../firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 import callService from "../../services/callService";
 import { useAuth } from "../../context/AuthContext";
@@ -20,7 +23,9 @@ export default function ChatWindow({ convId, currentUid, currentUser, otherUser,
   const [sending, setSending] = useState(false);
   const [calling, setCalling] = useState(false);
   const [requestingDoc, setRequestingDoc] = useState(false);
+  const [attaching, setAttaching] = useState(false);
   const bottomRef = useRef(null);
+  const fileRef = useRef(null);
 
   useEffect(() => {
     if (!convId) return;
@@ -44,6 +49,23 @@ export default function ChatWindow({ convId, currentUid, currentUser, otherUser,
       setText(trimmed);
     }
     setSending(false);
+  }
+
+  async function handleAttach(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { alert("File exceeds 10MB limit."); return; }
+    setAttaching(true);
+    try {
+      const storageRef = ref(storage, `attachments/${convId}/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      await sendMessage(convId, currentUid, "📎 Sent an attachment", { url, name: file.name, type: file.type });
+    } catch (err) {
+      console.error(err);
+      alert("Attachment upload failed.");
+    }
+    setAttaching(false);
   }
 
   function handleKey(e) {
@@ -228,6 +250,13 @@ export default function ChatWindow({ convId, currentUid, currentUser, otherUser,
                 boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
               }}>
                 {msg.text}
+                {msg.attachmentUrl && (
+                  <div style={{ marginTop: 8, padding: 8, background: "rgba(0,0,0,0.1)", borderRadius: 8 }}>
+                    <a href={msg.attachmentUrl} target="_blank" rel="noreferrer" style={{ color: mine ? "#fff" : C.royal, textDecoration: "none", display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700 }}>
+                      📄 {msg.attachmentName || "Attachment"}
+                    </a>
+                  </div>
+                )}
               </div>
               {time && (
                 <div style={{ fontSize: 10, color: C.silver, marginTop: 4, opacity: 0.7, padding: mine ? "0 4px 0 0" : "0 0 0 4px" }}>
@@ -245,8 +274,22 @@ export default function ChatWindow({ convId, currentUid, currentUser, otherUser,
         padding: "12px 16px",
         borderTop: `1px solid ${C.line}`,
         background: C.ink2,
-        display: "flex", gap: 10,
+        display: "flex", gap: 10, alignItems: "center"
       }}>
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={attaching || sending}
+          style={{
+            background: "none", border: "none", color: attaching ? C.silver : C.royal,
+            cursor: attaching ? "wait" : "pointer", padding: "8px", borderRadius: "50%",
+            display: "flex", alignItems: "center", justifyContent: "center"
+          }}
+          title="Attach Document/Resume"
+        >
+          <Paperclip size={20} />
+        </button>
+        <input ref={fileRef} type="file" style={{ display: "none" }} onChange={handleAttach} />
+        
         <textarea
           value={text}
           onChange={e => setText(e.target.value)}
@@ -255,11 +298,11 @@ export default function ChatWindow({ convId, currentUid, currentUser, otherUser,
           rows={1}
           style={{
             flex: 1,
-            background: "rgba(255,255,255,.05)",
+            background: "#ffffff",
             border: `1px solid ${C.line}`,
             borderRadius: 10,
             padding: "10px 14px",
-            color: "#fff",
+            color: C.text,
             fontSize: 14,
             fontFamily: C.font,
             resize: "none",

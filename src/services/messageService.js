@@ -69,14 +69,20 @@ export async function getOrCreateConversation(uid1, uid2, type, initiatedBy) {
 }
 
 // ── SEND MESSAGE ────────────────────────────────────────
-export async function sendMessage(convId, senderId, text) {
+export async function sendMessage(convId, senderId, text, attachment = null) {
   // Add message
-  await addDoc(collection(db, "conversations", convId, "messages"), {
+  const msgObj = {
     senderId,
     text,
     createdAt: serverTimestamp(),
     read: false,
-  });
+  };
+  if (attachment) {
+    msgObj.attachmentUrl = attachment.url;
+    msgObj.attachmentName = attachment.name;
+    msgObj.attachmentType = attachment.type;
+  }
+  await addDoc(collection(db, "conversations", convId, "messages"), msgObj);
 
   // Update conversation last message
   const convRef = doc(db, "conversations", convId);

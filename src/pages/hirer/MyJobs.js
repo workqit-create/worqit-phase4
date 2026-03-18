@@ -24,6 +24,7 @@ export default function HirerMyJobs() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(null);
   const [applicants, setApplicants] = useState({});
+  const [selectedApplicants, setSelectedApplicants] = useState([]);
   const [loadingApp, setLoadingApp] = useState(null);
   const [toast, setToast] = useState("");
 
@@ -94,6 +95,22 @@ export default function HirerMyJobs() {
         [jobId]: prev[jobId].map(a => a.id === appId ? { ...a, status } : a)
       }));
       showToast(`Talent status: ${status}.`);
+    } catch { showToast("Action failed."); }
+  }
+
+  async function handleBulkReject(jobId) {
+    const appsToReject = selectedApplicants.filter(id => applicants[jobId]?.find(a => a.id === id));
+    if (!appsToReject.length) return;
+    if (!window.confirm(`Reject ${appsToReject.length} candidates?`)) return;
+
+    try {
+      await Promise.all(appsToReject.map(id => updateApplicationStatus(id, "rejected")));
+      setApplicants(prev => ({
+        ...prev,
+        [jobId]: prev[jobId].map(a => appsToReject.includes(a.id) ? { ...a, status: "rejected" } : a)
+      }));
+      setSelectedApplicants(prev => prev.filter(id => !appsToReject.includes(id)));
+      showToast(`Bulk rejection complete.`);
     } catch { showToast("Action failed."); }
   }
 
@@ -205,11 +222,18 @@ export default function HirerMyJobs() {
                   <div style={{ background: "#F8FAFC", borderTop: "1px solid #E2E8F0", padding: "40px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
                       <div style={{ fontSize: "10px", fontWeight: 900, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "2.5px" }}>Strategic Shortlist</div>
-                      {jobApplicants.length > 0 && (
-                        <button onClick={() => handleExportApplicants(job.id, job.title)} style={{ ...S.actionBtn(false), background: "#fff" }}>
-                          <Download size={14} /> Export CSV
-                        </button>
-                      )}
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {selectedApplicants.some(id => jobApplicants.find(a => a.id === id)) && (
+                          <button onClick={() => handleBulkReject(job.id)} style={{ ...S.actionBtn(true, true), background: "#fff" }}>
+                            Reject Selected
+                          </button>
+                        )}
+                        {jobApplicants.length > 0 && (
+                          <button onClick={() => handleExportApplicants(job.id, job.title)} style={{ ...S.actionBtn(false), background: "#fff" }}>
+                            <Download size={14} /> Export CSV
+                          </button>
+                        )}
+                      </div>
                     </div>
                     
                     {loadingApp === job.id ? (
@@ -223,7 +247,16 @@ export default function HirerMyJobs() {
                           const sc2 = STATUS_COLORS[app.status] || STATUS_COLORS.pending;
                           const initial = (cand?.name || "?").charAt(0).toUpperCase();
                           return (
-                            <div key={app.id} style={{ display: "flex", alignItems: "center", gap: "20px", background: "#fff", border: "1px solid #E2E8F0", borderRadius: "20px", padding: "20px 24px" }}>
+                            <div key={app.id} style={{ display: "flex", alignItems: "center", gap: "16px", background: "#fff", border: "1px solid #E2E8F0", borderRadius: "20px", padding: "20px 24px" }}>
+                              <input 
+                                type="checkbox"
+                                checked={selectedApplicants.includes(app.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) setSelectedApplicants(prev => [...prev, app.id]);
+                                  else setSelectedApplicants(prev => prev.filter(id => id !== app.id));
+                                }}
+                                style={{ width: 18, height: 18, cursor: "pointer", accentColor: "#0055FF" }}
+                              />
                               <div style={{ width: "48px", height: "48px", borderRadius: "16px", background: "linear-gradient(135deg, #0055FF, #00AAFF)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: "16px" }}>{initial}</div>
                               <div style={{ flex: 1 }}>
                                 <div style={{ color: "#1D1D1F", fontWeight: 800, fontSize: "16px" }}>{cand?.name || "Unknown Talent"}</div>

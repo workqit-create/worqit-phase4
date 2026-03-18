@@ -15,9 +15,14 @@ import {
     getDocumentRequests,
     fulfillDocumentRequest
 } from "../../services/documentService";
+import { updateProfile } from "../../services/profileService";
 
 export default function DocumentVault() {
-    const { currentUser } = useAuth();
+    const { currentUser, userProfile, refreshProfile } = useAuth();
+    const [isUnlocked, setIsUnlocked] = useState(false);
+    const [pinInput, setPinInput] = useState("");
+    const [pinError, setPinError] = useState("");
+
     const [documents, setDocuments] = useState([]);
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -32,10 +37,31 @@ export default function DocumentVault() {
     const categories = ["Resume", "Passport", "Visa", "Emirates ID", "Educational Certificate", "NOC", "Other"];
 
     useEffect(() => {
-        if (currentUser) {
+        if (currentUser && isUnlocked) {
             loadDocuments();
         }
-    }, [currentUser]);
+    }, [currentUser, isUnlocked]);
+
+    const handlePinSubmit = async (e) => {
+        e.preventDefault();
+        if (!userProfile?.vaultPin) {
+            if (pinInput.length < 4) { setPinError("PIN must be at least 4 chars"); return; }
+            try {
+                await updateProfile(currentUser.uid, { vaultPin: pinInput });
+                await refreshProfile();
+                setIsUnlocked(true);
+            } catch {
+                setPinError("Failed to set PIN");
+            }
+        } else {
+            if (pinInput === userProfile.vaultPin) {
+                setIsUnlocked(true);
+                setPinError("");
+            } else {
+                setPinError("Incorrect PIN");
+            }
+        }
+    };
 
     const loadDocuments = async () => {
         setLoading(true);
@@ -191,6 +217,37 @@ export default function DocumentVault() {
             border: "1px dashed #E2E8F0"
         }
     };
+
+    if (!isUnlocked) {
+        return (
+            <div style={S.container}>
+                <div style={{...S.card, maxWidth: "400px", margin: "100px auto", textAlign: "center"}}>
+                    <ShieldAlert size={48} color="#1D1D1F" style={{marginBottom: 20}} />
+                    <h2 style={{...S.cardTitle, justifyContent: "center", borderBottom: "none", marginBottom: "8px"}}>
+                        {!userProfile?.vaultPin ? "Set Vault PIN" : "Unlock Document Vault"}
+                    </h2>
+                    <form onSubmit={handlePinSubmit}>
+                        <input 
+                            type="password" 
+                            maxLength="6" 
+                            value={pinInput} 
+                            onChange={e => setPinInput(e.target.value)} 
+                            style={{...S.input, textAlign: "center", letterSpacing: "8px", fontSize: "24px", marginBottom: "16px"}} 
+                            placeholder="••••" 
+                            required 
+                        />
+                        {pinError && <div style={{color: "#EF4444", fontSize: "14px", marginBottom: "16px", fontWeight: 700}}>{pinError}</div>}
+                        <button type="submit" style={S.btn}>{!userProfile?.vaultPin ? "Secure Vault" : "Unlock Vault"}</button>
+                    </form>
+                    {!userProfile?.vaultPin ? (
+                        <p style={{color: "#94A3B8", fontSize: "13px", marginTop: "16px", fontWeight: 600}}>Create a PIN to protect your sensitive documents.</p>
+                    ) : (
+                        <p style={{color: "#94A3B8", fontSize: "13px", marginTop: "16px", fontWeight: 600}}>Enter your PIN to access your restricted assets.</p>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div style={S.container}>

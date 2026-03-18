@@ -42,7 +42,7 @@ export default function HirerProfile() {
     setUploading(true); setError("");
     try {
       const storageRef = ref(storage, `photos/${currentUser.uid}`);
-      await uploadBytes(storageRef, file);
+      await uploadBytes(storageRef, file, { contentType: file.type });
       const url = await getDownloadURL(storageRef);
       setLogoURL(url);
       await updateProfile(currentUser.uid, { photo: url });

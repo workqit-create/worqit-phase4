@@ -53,7 +53,7 @@ export default function CandidateProfile() {
     setUploading(true);
     try {
       const storageRef = ref(storage, `photos/${currentUser.uid}`);
-      await uploadBytes(storageRef, file);
+      await uploadBytes(storageRef, file, { contentType: file.type });
       const url = await getDownloadURL(storageRef);
       setPhotoURL(url);
       await updateProfile(currentUser.uid, { photo: url });
@@ -186,6 +186,13 @@ export default function CandidateProfile() {
               </div>
             </div>
 
+            {form.portfolio && (
+              <div style={{ ...S.glassCard, marginTop: "48px" }}>
+                <div style={S.sectionTitle}>Portfolio & Achievements</div>
+                <p style={{ ...S.bio, whiteSpace: "pre-wrap", marginBottom: 0 }}>{form.portfolio}</p>
+              </div>
+            )}
+
             <div style={{ ...S.glassCard, marginTop: "48px" }}>
               <div style={S.sectionTitle}>Professional Path</div>
               <div style={{ display: "flex", flexDirection: "column" }}>
@@ -218,6 +225,27 @@ export default function CandidateProfile() {
       </div>
 
       <div style={S.formCard}>
+        <div style={{ marginBottom: "32px" }}>
+          <div style={S.sectionTitle}>Identity Asset</div>
+          <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+            {photoURL ? (
+              <img src={photoURL} alt="Profile" style={{ width: "80px", height: "80px", borderRadius: "20px", objectFit: "cover" }} />
+            ) : (
+              <div style={{ width: "80px", height: "80px", borderRadius: "20px", background: "#F1F5F9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "32px", fontWeight: 900, color: "#CBD5E1" }}>
+                {initials}
+              </div>
+            )}
+            <div>
+              <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} style={{ ...S.editBtn, padding: "10px 20px" }}>
+                {uploading ? "Uploading..." : "Replace Photo"}
+              </button>
+              <p style={{ color: "#94A3B8", fontSize: "12px", marginTop: "8px", fontWeight: 600 }}>Recommended: JPG or PNG</p>
+            </div>
+            {/* Keeping the file input here for Edit mode */}
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhoto} />
+          </div>
+        </div>
+
         <form onSubmit={handleSave}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "32px" }}>
             <div>
@@ -241,6 +269,11 @@ export default function CandidateProfile() {
           <div style={{ marginTop: "16px" }}>
             <label style={S.label}>Professional Narrative</label>
             <textarea value={form.bio} onChange={e => setForm({...form, bio: e.target.value})} style={S.textarea} placeholder="Define your professional mission and impact..." />
+          </div>
+
+          <div style={{ marginTop: "16px" }}>
+            <label style={S.label}>Portfolio & Achievements</label>
+            <textarea value={form.portfolio} onChange={e => setForm({...form, portfolio: e.target.value})} style={{...S.textarea, minHeight: "80px"}} placeholder="List your projects, certifications, and links to work samples..." />
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "32px" }}>
