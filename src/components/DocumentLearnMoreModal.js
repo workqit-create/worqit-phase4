@@ -1,6 +1,6 @@
 import React from "react";
 import { X, ExternalLink, Clock, CreditCard, Info } from "lucide-react";
-import { documentMasterData } from "../../data/documentMasterData";
+import { documentMasterData } from "../data/documentMasterData";
 
 export default function DocumentLearnMoreModal({ masterId, isOpen, onClose }) {
   if (!isOpen || !masterId) return null;
