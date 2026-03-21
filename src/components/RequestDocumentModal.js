@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { generateRecommendedChecklist, sendDocumentRequest } from "../../services/documentRequestService";
+import { generateRecommendedChecklist, sendDocumentRequest } from "../services/documentRequestService";
 import { X, Send, AlertTriangle } from "lucide-react";
 
 const COUNTRIES = [
