@@ -16,6 +16,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { Download, Users, Trash2, Pause, Play, ChevronDown, ChevronUp } from "lucide-react";
 import { exportToCSV } from "../../utils/csvExport";
+import RequestDocumentModal from "../../components/RequestDocumentModal";
 
 export default function HirerMyJobs() {
   const { currentUser } = useAuth();
@@ -27,6 +28,7 @@ export default function HirerMyJobs() {
   const [selectedApplicants, setSelectedApplicants] = useState([]);
   const [loadingApp, setLoadingApp] = useState(null);
   const [toast, setToast] = useState("");
+  const [docRequestModal, setDocRequestModal] = useState({ isOpen: false, candidate: null, job: null });
 
   async function loadJobs() {
     setLoading(true);
@@ -266,6 +268,7 @@ export default function HirerMyJobs() {
                                 <select value={app.status} onChange={e => handleStatusChange(app.id, job.id, e.target.value)} style={{ background: sc2.bg, border: `1px solid ${sc2.border}`, borderRadius: "100px", padding: "8px 16px", color: sc2.text, fontSize: "11px", fontWeight: 900, cursor: "pointer", outline: "none", textTransform: "uppercase" }}>
                                   {["pending", "viewed", "accepted", "rejected"].map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
+                                <button onClick={() => setDocRequestModal({ isOpen: true, candidate: cand, job })} style={{ background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", borderRadius: "12px", padding: "10px 16px", fontSize: "11px", fontWeight: 800, cursor: "pointer", textTransform: "uppercase", letterSpacing: "1px" }}>Docs</button>
                                 <button onClick={() => handleMessageCandidate(cand)} style={{ background: "#1D1D1F", color: "#fff", border: "none", borderRadius: "12px", padding: "10px 20px", fontSize: "11px", fontWeight: 800, cursor: "pointer", textTransform: "uppercase", letterSpacing: "1px" }}>Connect</button>
                               </div>
                             </div>
@@ -280,6 +283,17 @@ export default function HirerMyJobs() {
           })}
         </div>
       )}
+
+      <RequestDocumentModal 
+        isOpen={docRequestModal.isOpen} 
+        candidate={docRequestModal.candidate} 
+        job={docRequestModal.job} 
+        hrUid={currentUser.uid}
+        onClose={(success) => {
+          setDocRequestModal({ isOpen: false, candidate: null, job: null });
+          if (success) showToast("Document Request sent successfully!");
+        }} 
+      />
     </div>
   );
 }

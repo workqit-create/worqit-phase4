@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════
 
 import React, { useState, useEffect } from "react";
-import { Upload, FileText, Trash2, Clock, Eye, EyeOff, ShieldAlert, DownloadCloud } from "lucide-react";
+import { Upload, FileText, Trash2, Clock, Eye, EyeOff, ShieldAlert, DownloadCloud, UploadCloud, Info } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { C } from "../shared/theme";
 import {
@@ -15,6 +15,8 @@ import {
     getDocumentRequests,
     fulfillDocumentRequest
 } from "../../services/documentService";
+import { getCandidateDocuments as getChecklistDocuments, uploadCandidateDocument as uploadChecklistDocument } from "../../services/documentRequestService";
+import DocumentLearnMoreModal from "../../components/DocumentLearnMoreModal";
 import { updateProfile } from "../../services/profileService";
 
 export default function DocumentVault() {
@@ -27,6 +29,11 @@ export default function DocumentVault() {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
+
+    const [infoModalMasterId, setInfoModalMasterId] = useState(null);
+    const [uploadModalReqId, setUploadModalReqId] = useState(null);
+    const [reqFile, setReqFile] = useState(null);
+    const [reqNote, setReqNote] = useState("");
 
     // Upload form state
     const [file, setFile] = useState(null);
@@ -66,12 +73,13 @@ export default function DocumentVault() {
     const loadDocuments = async () => {
         setLoading(true);
         try {
-            const [docs, reqs] = await Promise.all([
+            const [docs, checklistItems] = await Promise.all([
                 getCandidateDocuments(currentUser.uid),
-                getDocumentRequests(currentUser.uid, "candidate")
+                getChecklistDocuments(currentUser.uid) // Use new service
             ]);
             setDocuments(docs);
-            setRequests(reqs.filter(r => r.status === "pending"));
+            // Hide verified or completed ones if desired, or show all. We'll show all.
+            setRequests(checklistItems.sort((a,b) => b.createdAt - a.createdAt));
         } catch (e) {
             console.error("Error loading documents:", e);
         } finally {
@@ -89,6 +97,20 @@ export default function DocumentVault() {
             alert("Failed to fulfill request.");
         }
     };
+
+    const handleChecklistUploadSubmit = async (reqId) => {
+        if (!reqFile) return alert("Select a file first");
+        setUploading(true);
+        try {
+            await uploadChecklistDocument(reqId, reqFile, reqNote);
+            setUploadModalReqId(null);
+            setReqFile(null);
+            setReqNote("");
+            alert("Checklist document uploaded successfully!");
+            loadDocuments();
+        } catch (e) { console.error(e); alert("Failed to upload document."); }
+        setUploading(false);
+    }
 
     const handleFileChange = (e) => {
         if (e.target.files && e.target.files[0]) {
@@ -315,32 +337,65 @@ export default function DocumentVault() {
                         </form>
                     </div>
 
-                    {/* PENDING REQUESTS PANEL */}
+                    {/* COMPLIANCE CHECKLIST PANEL */}
                     {requests.length > 0 && (
-                        <div style={{ ...S.card, marginTop: "32px", border: "1px solid #F59E0B", background: "rgba(245,158,11,0.02)" }}>
-                            <h2 style={{ ...S.cardTitle, color: "#F59E0B", borderBottom: "1px solid rgba(245,158,11,0.1)" }}><Clock size={20} /> Active Requests</h2>
+                        <div style={{ ...S.card, marginTop: "32px", border: "1px solid #1D1D1F", background: "#F8FAFC" }}>
+                            <h2 style={{ ...S.cardTitle, color: "#1D1D1F", borderBottom: "1px solid #E2E8F0" }}><FileText size={20} /> Requested Compliance Checks</h2>
                             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                                {requests.map(req => (
-                                    <div key={req.id} style={{ background: "#fff", padding: "20px", borderRadius: "16px", border: "1px solid rgba(245,158,11,0.2)" }}>
-                                        <div style={{ fontWeight: 800, color: "#1D1D1F", marginBottom: "4px", fontSize: "14px" }}>Request: {req.documentType}</div>
-                                        <div style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "16px", fontWeight: 600 }}>{req.notes || "Official document request from Hirer."}</div>
-                                        <div style={{ position: "relative" }}>
-                                            <select
-                                                style={{ ...S.select, padding: "10px 14px", fontSize: "12px" }}
-                                                onChange={(e) => {
-                                                    if (e.target.value) handleFulfillRequest(req.id, e.target.value, req.hirerId);
-                                                }}
-                                                defaultValue=""
-                                            >
-                                                <option value="" disabled>Select vault asset to share...</option>
-                                                {documents.map(d => (
-                                                    <option key={d.id} value={d.id}>{d.docCategory} ({d.fileName})</option>
-                                                ))}
-                                            </select>
-                                            <span className="material-symbols-outlined" style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", color: "#94A3B8", pointerEvents: "none", fontSize: "18px" }}>expand_more</span>
+                                {requests.map(req => {
+                                    const isNotStarted = req.status === "not_started" || req.status === "rejected";
+                                    const isUploaded = req.status === "uploaded";
+                                    const isVerified = req.status === "verified";
+                                    const activeTarget = uploadModalReqId === req.id;
+
+                                    return (
+                                        <div key={req.id} style={{ background: "#fff", padding: "20px", borderRadius: "16px", border: "1px solid #E2E8F0", boxShadow: "0 2px 8px rgba(0,0,0,0.02)" }}>
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+                                                <div>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: 800, color: "#1D1D1F", fontSize: "16px" }}>
+                                                        {req.name}
+                                                        {req.mandatory && <span style={{ background: "rgba(220,50,50,0.1)", color: "#E53E3E", padding: "2px 6px", borderRadius: "4px", fontSize: "9px", textTransform: "uppercase" }}>Mandatory</span>}
+                                                    </div>
+                                                    <div style={{ fontSize: "11px", color: "#64748B", marginTop: "4px", fontWeight: 700, textTransform: "uppercase" }}>STATUS: 
+                                                        <span style={{ color: isVerified ? "#00B464" : (req.status==="rejected" ? "#E53E3E" : (isUploaded ? "#0055FF" : "#F5A623")), marginLeft: "4px" }}>
+                                                            {req.status.replace("_", " ")}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => setInfoModalMasterId(req.documentMasterId)} style={{ background: "none", border: "none", color: "#0055FF", fontSize: "12px", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}><Info size={14}/> Learn More</button>
+                                            </div>
+
+                                            {req.hrNote && (
+                                                <div style={{ fontSize: "13px", color: "#1D1D1F", background: "#F1F5F9", padding: "12px", borderRadius: "12px", marginBottom: "16px", borderLeft: "4px solid #0055FF" }}>
+                                                    <strong>HR Note:</strong> {req.hrNote}
+                                                </div>
+                                            )}
+
+                                            {req.status === "rejected" && req.hrRejectionReason && (
+                                                <div style={{ fontSize: "13px", color: "#E53E3E", background: "rgba(229,62,62,0.1)", padding: "12px", borderRadius: "12px", marginBottom: "16px", fontWeight: 600 }}>
+                                                    <strong>Rejected:</strong> {req.hrRejectionReason}
+                                                </div>
+                                            )}
+
+                                            {(!isVerified && !isUploaded && !activeTarget) && (
+                                                <button onClick={() => setUploadModalReqId(req.id)} style={{ background: "#1D1D1F", color: "#fff", border: "none", borderRadius: "12px", padding: "10px 16px", fontSize: "12px", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+                                                    <UploadCloud size={16} /> Upload Document Now
+                                                </button>
+                                            )}
+
+                                            {activeTarget && (
+                                                <div style={{ background: "#F8FAFC", border: "1px dashed #0055FF", padding: "16px", borderRadius: "12px", marginTop: "12px" }}>
+                                                    <input type="file" onChange={e => setReqFile(e.target.files[0])} style={{ marginBottom: "12px", width: "100%" }} />
+                                                    <textarea placeholder="Add a note (optional)" value={reqNote} onChange={e => setReqNote(e.target.value)} style={{ ...S.input, minHeight: "60px", marginBottom: "12px" }} />
+                                                    <div style={{ display: "flex", gap: "8px" }}>
+                                                        <button onClick={() => handleChecklistUploadSubmit(req.id)} disabled={uploading} style={{ background: "#0055FF", color: "#fff", border: "none", borderRadius: "8px", padding: "8px 16px", fontSize: "11px", fontWeight: 800, cursor: "pointer" }}>{uploading ? "Uploading..." : "Submit File"}</button>
+                                                        <button onClick={() => setUploadModalReqId(null)} style={{ background: "transparent", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: "8px", padding: "8px 16px", fontSize: "11px", fontWeight: 800, cursor: "pointer" }}>Cancel</button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
@@ -414,6 +469,8 @@ export default function DocumentVault() {
                 </div>
 
             </div>
+
+            <DocumentLearnMoreModal masterId={infoModalMasterId} isOpen={!!infoModalMasterId} onClose={() => setInfoModalMasterId(null)} />
         </div>
     );
 }

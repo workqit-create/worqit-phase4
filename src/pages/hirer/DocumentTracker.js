@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { getDocumentRequests } from "../../services/documentService";
+import { getHrTrackerDocuments, verifyCandidateDocument, rejectCandidateDocument } from "../../services/documentRequestService";
 import { getDoc, doc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { C } from "../shared/theme";
@@ -123,25 +123,37 @@ export default function DocumentHub() {
     const loadRequests = async () => {
         setLoading(true);
         try {
-            const reqs = await getDocumentRequests(currentUser.uid, "hirer");
-
-            const enriched = await Promise.all(reqs.map(async (r) => {
-                let candidateName = "Unknown Candidate";
-                let docData = null;
-                try {
+            const reqs = await getHrTrackerDocuments(currentUser.uid);
+            
+            const grouped = {};
+            for (let r of reqs) {
+                if (!grouped[r.candidateId]) {
                     const candSnap = await getDoc(doc(db, "users", r.candidateId));
-                    if (candSnap.exists()) candidateName = candSnap.data().name || "Candidate";
-                    if (r.status === "fulfilled" && r.fulfilledWithDocId) {
-                        const docSnap = await getDoc(doc(db, "documents", r.fulfilledWithDocId));
-                        if (docSnap.exists()) docData = docSnap.data();
-                    }
-                } catch (e) { console.error(e); }
-                return { ...r, candidateName, docData };
-            }));
-            setRequests(enriched);
+                    let cname = candSnap.exists() ? candSnap.data().name : "Unknown Candidate";
+                    grouped[r.candidateId] = { candidateName: cname, candidateId: r.candidateId, docs: [] };
+                }
+                grouped[r.candidateId].docs.push(r);
+            }
+            setRequests(Object.values(grouped));
         } catch (e) { console.error(e); }
         setLoading(false);
     };
+
+    const handleVerify = async (docId) => {
+        try {
+            await verifyCandidateDocument(docId);
+            loadRequests(); 
+        } catch (e) {}
+    }
+
+    const handleReject = async (docId) => {
+        const reason = prompt("Enter reason for rejection:");
+        if (!reason) return;
+        try {
+            await rejectCandidateDocument(docId, reason);
+            loadRequests();
+        } catch (e) {}
+    }
 
     const handleSelectTemplate = (tmpl) => {
         setSelectedTemplate(tmpl);
@@ -270,38 +282,49 @@ export default function DocumentHub() {
                             <p style={{ fontSize: "14px", color: "#94A3B8", fontWeight: 500 }}>Request documents directly from the message interface.</p>
                         </div>
                     ) : (
-                        requests.map(req => {
-                            const fulfilled = req.status === "fulfilled";
-                            return (
-                                <div key={req.id} style={S.card} onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"} onMouseLeave={e => e.currentTarget.style.transform = "none"}>
-                                    <div style={S.left}>
-                                        <div style={S.icon(fulfilled)}>
-                                            {fulfilled ? <CheckCircle size={24} /> : <Clock size={24} />}
-                                        </div>
-                                        <div>
-                                            <div style={S.docType}>{req.documentType}</div>
-                                            <div style={S.meta}>
-                                                Requested from <span style={{ color: "#1D1D1F" }}>{req.candidateName}</span> • {new Date(req.requestedAt?.toDate()).toLocaleDateString()}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-                                        <div style={S.statusBadge(fulfilled)}>
-                                            {fulfilled ? "Fulfilled" : "Pending Upload"}
-                                        </div>
-
-                                        {fulfilled && req.docData?.url && (
-                                            <a href={req.docData.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
-                                                <button style={S.downloadBtn}>
-                                                    <Download size={16} /> Download
-                                                </button>
-                                            </a>
-                                        )}
-                                    </div>
+                        requests.map(group => (
+                            <div key={group.candidateId} style={{ ...S.card, flexDirection: "column", alignItems: "stretch", padding: "32px" }}>
+                                <div style={{ fontSize: "18px", fontWeight: 800, color: "#1D1D1F", marginBottom: "20px", borderBottom: "1px solid #E2E8F0", paddingBottom: "16px" }}>
+                                    Candidate: {group.candidateName}
                                 </div>
-                            );
-                        })
+                                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                                    {group.docs.map(docItem => {
+                                        const isUploaded = docItem.status === "uploaded";
+                                        const isVerified = docItem.status === "verified";
+                                        const isRejected = docItem.status === "rejected";
+                                        
+                                        return (
+                                            <div key={docItem.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px", background: "#F8FAFC", borderRadius: "16px", border: "1px solid #E2E8F0" }}>
+                                                <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                                                    <div style={S.icon(isVerified)}>
+                                                        {isVerified ? <CheckCircle size={20} /> : (isRejected ? <Shield size={20} color="#E53E3E" /> : <Clock size={20} />)}
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontSize: "15px", fontWeight: 800, color: "#1D1D1F" }}>{docItem.name}</div>
+                                                        <div style={{ fontSize: "12px", color: "#64748B", fontWeight: 600, marginTop: "4px", textTransform: "uppercase" }}>
+                                                            STATUS: <span style={{ color: isVerified ? "#00B464" : (isRejected ? "#E53E3E" : (isUploaded ? "#0055FF" : "#F5A623")) }}>{docItem.status.replace("_", " ")}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                                                    {docItem.uploadedFileUrl && (
+                                                        <a href={docItem.uploadedFileUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                                                            <button style={{ ...S.downloadBtn, background: "#fff", color: "#1D1D1F", border: "1px solid #E2E8F0", boxShadow: "none" }}>View File</button>
+                                                        </a>
+                                                    )}
+                                                    {isUploaded && (
+                                                        <>
+                                                            <button onClick={() => handleVerify(docItem.id)} style={{ ...S.downloadBtn, background: "rgba(0,180,100,0.1)", color: "#00B464", boxShadow: "none" }}>Verify</button>
+                                                            <button onClick={() => handleReject(docItem.id)} style={{ ...S.downloadBtn, background: "rgba(229,62,62,0.1)", color: "#E53E3E", boxShadow: "none" }}>Reject</button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))
                     )}
                 </>
             )}
