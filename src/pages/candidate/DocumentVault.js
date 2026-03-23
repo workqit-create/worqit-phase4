@@ -82,7 +82,12 @@ export default function DocumentVault() {
             console.log("Personal Vault Docs:", docs.length);
             console.log("Checklist Items found:", checklistItems.length);
 
-            setDocuments(docs || []);
+            const sortedDocs = (docs || []).sort((a, b) => {
+                const dateA = a.createdAt?.seconds || 0;
+                const dateB = b.createdAt?.seconds || 0;
+                return dateB - dateA;
+            });
+            setDocuments(sortedDocs);
             
             // Safe sort: handle Firestore timestamps or nulls
             const sortedRequests = (checklistItems || []).sort((a, b) => {

@@ -41,8 +41,7 @@ export async function uploadCandidateDocument(file, candidateId, metadata) {
 export async function getCandidateDocuments(candidateId) {
     const q = query(
         collection(db, "documents"),
-        where("candidateId", "==", candidateId),
-        orderBy("createdAt", "desc")
+        where("candidateId", "==", candidateId)
     );
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() }));
