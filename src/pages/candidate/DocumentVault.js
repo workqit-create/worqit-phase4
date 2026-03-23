@@ -73,13 +73,25 @@ export default function DocumentVault() {
     const loadDocuments = async () => {
         setLoading(true);
         try {
+            console.log("Loading documents for:", currentUser.uid);
             const [docs, checklistItems] = await Promise.all([
                 getCandidateDocuments(currentUser.uid),
-                getChecklistDocuments(currentUser.uid) // Use new service
+                getChecklistDocuments(currentUser.uid)
             ]);
-            setDocuments(docs);
-            // Hide verified or completed ones if desired, or show all. We'll show all.
-            setRequests(checklistItems.sort((a,b) => b.createdAt - a.createdAt));
+            
+            console.log("Personal Vault Docs:", docs.length);
+            console.log("Checklist Items found:", checklistItems.length);
+
+            setDocuments(docs || []);
+            
+            // Safe sort: handle Firestore timestamps or nulls
+            const sortedRequests = (checklistItems || []).sort((a, b) => {
+                const dateA = a.createdAt?.seconds || 0;
+                const dateB = b.createdAt?.seconds || 0;
+                return dateB - dateA;
+            });
+            
+            setRequests(sortedRequests);
         } catch (e) {
             console.error("Error loading documents:", e);
         } finally {
