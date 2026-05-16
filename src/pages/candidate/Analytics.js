@@ -52,16 +52,16 @@ export default function CandidateAnalytics() {
       if (!currentUser?.uid) return;
       try {
         const apps = await getCandidateApplications(currentUser.uid);
-        
+
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         const timeline = [];
         const now = new Date();
         for (let i = 5; i >= 0; i--) {
           const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
           const m = monthNames[d.getMonth()];
-          timeline.push({ 
-            month: m, 
-            applications: Math.floor(Math.random() * 5) + 1 
+          timeline.push({
+            month: m,
+            applications: Math.floor(Math.random() * 5) + 1
           });
         }
 
@@ -125,7 +125,7 @@ export default function CandidateAnalytics() {
 
       {/* STATS ROW */}
       <div style={S.grid}>
-        
+
         {/* Profile Views */}
         <div className="premium-glass-card" style={S.card}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -206,7 +206,7 @@ export default function CandidateAnalytics() {
               <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} dy={10} />
               <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
               <Tooltip
-                contentStyle={{ 
+                contentStyle={{
                   background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)',
                   border: '1px solid rgba(0,85,255,0.1)', borderRadius: '16px',
                   boxShadow: '0 10px 30px rgba(0,0,0,0.05)'

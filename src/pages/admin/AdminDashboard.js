@@ -5,16 +5,18 @@ import { useAuth } from "../../context/AuthContext";
 import { C } from "../shared/theme";
 import { LOGO_HORIZ } from "../../assets/logos";
 
-import AdminStats      from "./AdminStats";
-import AdminUsers      from "./AdminUsers";
-import AdminJobs       from "./AdminJobs";
+import AdminStats       from "./AdminStats";
+import AdminUsers       from "./AdminUsers";
+import AdminJobs        from "./AdminJobs";
 import AdminFounding100 from "./AdminFounding100";
+import AdminAuditLogs   from "./AdminAuditLogs";
 
 const NAV = [
   { path: "",          label: "Stats Overview", icon: "📊" },
   { path: "users",     label: "All Users",      icon: "👥" },
   { path: "jobs",      label: "All Jobs",        icon: "💼" },
   { path: "founding",  label: "Founding 100",   icon: "🏆" },
+  { path: "logs",      label: "Audit Logs",     icon: "🛡️" },
 ];
 
 export default function AdminDashboard() {
@@ -65,10 +67,11 @@ export default function AdminDashboard() {
       {/* MAIN */}
       <div style={{ flex: 1, overflow: "auto" }}>
         <Routes>
-          <Route path="/"         element={<AdminStats />} />
-          <Route path="/users"    element={<AdminUsers />} />
-          <Route path="/jobs"     element={<AdminJobs />} />
-          <Route path="/founding" element={<AdminFounding100 />} />
+          <Route path="/"          element={<AdminStats />} />
+          <Route path="/users"     element={<AdminUsers />} />
+          <Route path="/jobs"      element={<AdminJobs />} />
+          <Route path="/founding"  element={<AdminFounding100 />} />
+          <Route path="/logs"      element={<AdminAuditLogs />} />
         </Routes>
       </div>
     </div>

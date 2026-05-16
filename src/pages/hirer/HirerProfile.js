@@ -9,7 +9,7 @@ import { storage } from "../../firebase";
 export default function HirerProfile() {
   const { currentUser, userProfile, refreshProfile } = useAuth();
   const [mode, setMode] = useState("view");
-  const [form, setForm] = useState({ name:"", companyName:"", industry:"", companySize:"", location:"", companyBio:"", website:"", linkedin:"" });
+  const [form, setForm] = useState({ name: "", companyName: "", industry: "", companySize: "", location: "", companyBio: "", website: "", linkedin: "" });
   const [logoURL, setLogoURL] = useState("");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -20,14 +20,14 @@ export default function HirerProfile() {
   useEffect(() => {
     if (userProfile) {
       setForm({
-        name:        userProfile.name || "",
+        name: userProfile.name || "",
         companyName: userProfile.companyName || "",
-        industry:    userProfile.industry || "",
+        industry: userProfile.industry || "",
         companySize: userProfile.companySize || "",
-        location:    userProfile.location || "",
-        companyBio:  userProfile.companyBio || "",
-        website:     userProfile.website || "",
-        linkedin:    userProfile.linkedin || "",
+        location: userProfile.location || "",
+        companyBio: userProfile.companyBio || "",
+        website: userProfile.website || "",
+        linkedin: userProfile.linkedin || "",
       });
       setLogoURL(userProfile.photo || "");
       if (userProfile.profileComplete && userProfile.companyName) setMode("view");
@@ -71,7 +71,7 @@ export default function HirerProfile() {
     header: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "48px" },
     title: { fontSize: "32px", fontWeight: 900, color: "#1D1D1F", fontFamily: "'Outfit', sans-serif", letterSpacing: "-1px", marginBottom: "8px" },
     subtitle: { color: "#94A3B8", fontSize: "16px", fontWeight: 500 },
-    
+
     // VIEW MODE STYLES
     profileCard: { background: "#fff", borderRadius: "40px", border: "1px solid #E2E8F0", overflow: "hidden", boxShadow: "0 24px 48px -12px rgba(0,0,0,0.05)" },
     banner: { height: "160px", background: "linear-gradient(135deg, #0055FF, #00AAFF, #0055FF)", position: "relative" },
@@ -79,13 +79,13 @@ export default function HirerProfile() {
     logoWrapper: { position: "relative", width: "120px", height: "120px", marginBottom: "24px" },
     logo: { width: "120px", height: "120px", borderRadius: "32px", background: "#fff", border: "6px solid #fff", boxShadow: "0 12px 24px rgba(0,0,0,0.1)", objectFit: "cover", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "48px", fontWeight: 900, color: "#0055FF" },
     cameraBtn: { position: "absolute", bottom: "8px", right: "8px", width: "36px", height: "36px", borderRadius: "12px", background: "#1D1D1F", color: "#fff", border: "4px solid #fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" },
-    
+
     companyName: { fontSize: "28px", fontWeight: 900, color: "#1D1D1F", marginBottom: "8px", fontFamily: "'Outfit', sans-serif" },
     metaRow: { display: "flex", gap: "24px", color: "#64748B", fontSize: "14px", fontWeight: 600, marginBottom: "32px" },
-    
+
     sectionTitle: { fontSize: "11px", fontWeight: 900, color: "#0055FF", textTransform: "uppercase", letterSpacing: "2px", marginBottom: "16px" },
     bio: { fontSize: "15px", lineHeight: "1.8", color: "#475569", marginBottom: "40px", fontWeight: 500 },
-    
+
     linkBtn: { display: "inline-flex", alignItems: "center", gap: "10px", padding: "12px 24px", borderRadius: "16px", background: "#F1F5F9", color: "#1D1D1F", textDecoration: "none", fontSize: "13px", fontWeight: 800, transition: "all 0.2s" },
     editBtn: { background: "#1D1D1F", color: "#fff", border: "none", borderRadius: "14px", padding: "12px 24px", fontWeight: 800, fontSize: "12px", cursor: "pointer", textTransform: "uppercase", letterSpacing: "1px", transition: "all 0.2s" },
 
@@ -118,7 +118,7 @@ export default function HirerProfile() {
               </div>
             )}
           </div>
-          
+
           <div style={S.content}>
             <div style={S.logoWrapper}>
               {logoURL ? (
@@ -192,22 +192,22 @@ export default function HirerProfile() {
           <div style={S.formGrid}>
             <div>
               <label style={S.label}>Organization Name</label>
-              <input type="text" style={S.input} value={form.companyName} onChange={e => setForm({...form, companyName: e.target.value})} required placeholder="e.g. Acme Strategic" />
+              <input type="text" style={S.input} value={form.companyName} onChange={e => setForm({ ...form, companyName: e.target.value })} required placeholder="e.g. Acme Strategic" />
             </div>
             <div>
               <label style={S.label}>Industry Sector</label>
-              <input type="text" style={S.input} value={form.industry} onChange={e => setForm({...form, industry: e.target.value})} placeholder="e.g. Financial Technology" />
+              <input type="text" style={S.input} value={form.industry} onChange={e => setForm({ ...form, industry: e.target.value })} placeholder="e.g. Financial Technology" />
             </div>
             <div>
               <label style={S.label}>Organization Size</label>
-              <select style={{ ...S.input, cursor: "pointer" }} value={form.companySize} onChange={e => setForm({...form, companySize: e.target.value})}>
+              <select style={{ ...S.input, cursor: "pointer" }} value={form.companySize} onChange={e => setForm({ ...form, companySize: e.target.value })}>
                 <option value="">Select Scale</option>
-                {["1–10","11–50","51–200","201–500","501–1000","1000+"].map(s => <option key={s} value={s}>{s} Employees</option>)}
+                {["1–10", "11–50", "51–200", "201–500", "501–1000", "1000+"].map(s => <option key={s} value={s}>{s} Employees</option>)}
               </select>
             </div>
             <div>
               <label style={S.label}>Headquarters Location</label>
-              <input type="text" style={S.input} value={form.location} onChange={e => setForm({...form, location: e.target.value})} placeholder="e.g. Dubai, UAE" />
+              <input type="text" style={S.input} value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="e.g. Dubai, UAE" />
             </div>
           </div>
         </div>
@@ -215,7 +215,7 @@ export default function HirerProfile() {
         <div style={S.fieldCard}>
           <div style={S.sectionTitle}>Brand Narrative</div>
           <label style={S.label}>Company Biography</label>
-          <textarea style={S.textarea} value={form.companyBio} onChange={e => setForm({...form, companyBio: e.target.value})} placeholder="Describe your company's mission, culture, and strategic goals..." />
+          <textarea style={S.textarea} value={form.companyBio} onChange={e => setForm({ ...form, companyBio: e.target.value })} placeholder="Describe your company's mission, culture, and strategic goals..." />
         </div>
 
         <div style={S.fieldCard}>
@@ -223,11 +223,11 @@ export default function HirerProfile() {
           <div style={S.formGrid}>
             <div>
               <label style={S.label}>Corporate Website</label>
-              <input type="text" style={S.input} value={form.website} onChange={e => setForm({...form, website: e.target.value})} placeholder="https://acme.com" />
+              <input type="text" style={S.input} value={form.website} onChange={e => setForm({ ...form, website: e.target.value })} placeholder="https://acme.com" />
             </div>
             <div>
               <label style={S.label}>LinkedIn Page</label>
-              <input type="text" style={S.input} value={form.linkedin} onChange={e => setForm({...form, linkedin: e.target.value})} placeholder="https://linkedin.com/company/acme" />
+              <input type="text" style={S.input} value={form.linkedin} onChange={e => setForm({ ...form, linkedin: e.target.value })} placeholder="https://linkedin.com/company/acme" />
             </div>
           </div>
         </div>

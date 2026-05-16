@@ -25,6 +25,7 @@ import CandidateProfile from "./CandidateProfile";
 import DocumentVault from "./DocumentVault";
 import JobAlerts from "./JobAlerts";
 import CandidateAnalytics from "./Analytics";
+import AIInterviewPrep from "./AIInterviewPrep";
 
 export default function CandidateDashboard() {
   const { userProfile, logout, currentUser } = useAuth();
@@ -210,6 +211,7 @@ export default function CandidateDashboard() {
               { path: "alerts", label: "Job Alerts", icon: "notifications_active" },
               { path: "analytics", label: "Growth Insights", icon: "analytics" },
               { path: "documents", label: "Document Vault", icon: "folder_open" },
+              { path: "prep", label: "Interview Prep", icon: "psychology" }, // psychology icon or similar
               { path: "profile", label: "Elite Profile", icon: "account_circle" },
             ].map(item => (
               <div key={item.path} onClick={() => navigate(`/candidate/${item.path}`)} style={S.navItem(activePath === item.path)}>
@@ -250,6 +252,7 @@ export default function CandidateDashboard() {
             <Route path="/alerts" element={<JobAlerts />} />
             <Route path="/analytics" element={<CandidateAnalytics />} />
             <Route path="/documents" element={<DocumentVault />} />
+            <Route path="/prep" element={<AIInterviewPrep />} />
             <Route path="/profile" element={<CandidateProfile />} />
           </Routes>
         </main>

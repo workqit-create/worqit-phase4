@@ -8,7 +8,7 @@ import { C } from "../shared/theme";
 import { useAuth } from "../../context/AuthContext";
 import { CheckCircle, Zap, Shield, CreditCard } from "lucide-react";
 
-const STRIPE_PRICE_ID = "price_1xxxxxxxxx"; 
+const STRIPE_PRICE_ID = process.env.REACT_APP_STRIPE_PRICE_ID || "price_1xxxxxxxxx"; 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
 
 export default function Billing() {

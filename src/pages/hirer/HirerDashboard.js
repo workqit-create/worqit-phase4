@@ -155,15 +155,15 @@ export default function HirerDashboard() {
       {/* TOP NAVIGATION */}
       <header style={S.header}>
         <div style={S.logoArea}>
-          <img 
-            src={LOGO_HORIZ} 
-            alt="Worqit" 
-            style={S.logo} 
+          <img
+            src={LOGO_HORIZ}
+            alt="Worqit"
+            style={S.logo}
             onClick={() => navigate("/hirer")}
             onMouseEnter={e => e.currentTarget.style.transform = "scale(1.02)"}
             onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
           />
-          
+
           <nav style={S.topNav}>
             <Link to="/hirer" style={S.topLink(activePath === "")}>Overview</Link>
             <Link to="/hirer/analytics" style={S.topLink(activePath === "analytics")}>Analytics</Link>
@@ -174,10 +174,10 @@ export default function HirerDashboard() {
         <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
           <div style={S.searchWrap}>
             <span className="material-symbols-outlined" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "#94A3B8", fontSize: "18px" }}>search</span>
-            <input 
-              style={S.searchInput} 
-              placeholder="Search strategic roles or candidates..." 
-              type="text" 
+            <input
+              style={S.searchInput}
+              placeholder="Search strategic roles or candidates..."
+              type="text"
               onFocus={e => { e.currentTarget.style.borderColor = "#0055FF"; e.currentTarget.style.boxShadow = "0 0 0 4px rgba(0,85,255,0.05)"; }}
               onBlur={e => { e.currentTarget.style.borderColor = "#E2E8F0"; e.currentTarget.style.boxShadow = "none"; }}
             />
@@ -266,8 +266,8 @@ export default function HirerDashboard() {
               <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>post_add</span>
               Publish Opportunity
             </button>
-            <button 
-              onClick={logout} 
+            <button
+              onClick={logout}
               style={S.signoutBtn}
               onMouseEnter={e => { e.currentTarget.style.background = "rgba(220,50,50,0.05)"; e.currentTarget.style.color = "#E53E3E"; e.currentTarget.style.borderColor = "rgba(220,50,50,0.1)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(0,0,0,0.03)"; e.currentTarget.style.color = "#6E6E73"; e.currentTarget.style.borderColor = "rgba(0,0,0,0.05)"; }}

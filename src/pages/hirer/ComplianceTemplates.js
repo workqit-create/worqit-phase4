@@ -196,7 +196,7 @@ export default function ComplianceTemplates() {
                                     {selectedTemplate.fields.map(f => (
                                         <div key={f.id}>
                                             <label style={S.label}>{f.label}</label>
-                                            <input type={f.type} style={S.input} value={formData[f.id]} onChange={(e) => setFormData({...formData, [f.id]: e.target.value})} required />
+                                            <input type={f.type} style={S.input} value={formData[f.id]} onChange={(e) => setFormData({ ...formData, [f.id]: e.target.value })} required />
                                         </div>
                                     ))}
                                 </div>

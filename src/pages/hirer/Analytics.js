@@ -64,9 +64,9 @@ export default function HirerAnalytics() {
         for (let i = 5; i >= 0; i--) {
           const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
           const m = monthNames[d.getMonth()];
-          timeline.push({ 
-            month: m, 
-            applicants: Math.floor(Math.random() * 50) + 10 
+          timeline.push({
+            month: m,
+            applicants: Math.floor(Math.random() * 50) + 10
           });
         }
 
@@ -130,7 +130,7 @@ export default function HirerAnalytics() {
 
       {/* STATS ROW */}
       <div style={S.grid}>
-        
+
         {/* Exposure */}
         <div className="premium-glass-card" style={S.card}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -217,7 +217,7 @@ export default function HirerAnalytics() {
               <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} dy={10} />
               <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
               <Tooltip
-                contentStyle={{ 
+                contentStyle={{
                   background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)',
                   border: '1px solid rgba(0,85,255,0.1)', borderRadius: '16px',
                   boxShadow: '0 10px 30px rgba(0,0,0,0.05)'

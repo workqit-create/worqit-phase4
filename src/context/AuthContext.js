@@ -29,6 +29,7 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isSuspended, setIsSuspended] = useState(false);
 
   async function signUpEmail(email, password, userType, name) {
     const result = await createUserWithEmailAndPassword(auth, email, password);
@@ -64,7 +65,18 @@ export function AuthProvider({ children }) {
 
   async function fetchUserProfile(uid) {
     const snap = await getDoc(doc(db, "users", uid));
-    if (snap.exists()) { setUserProfile(snap.data()); return snap.data(); }
+    if (snap.exists()) {
+      const data = snap.data();
+      // Block access for suspended accounts
+      if (data.suspended === true || data.status === 'suspended') {
+        setIsSuspended(true);
+        await signOut(auth);
+        return null;
+      }
+      setIsSuspended(false);
+      setUserProfile(data);
+      return data;
+    }
     return null;
   }
 
@@ -86,7 +98,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{
-      currentUser, userProfile,
+      currentUser, userProfile, isSuspended,
       signUpEmail, signInEmail, signInGoogle,
       logout, resetPassword, refreshProfile,
     }}>

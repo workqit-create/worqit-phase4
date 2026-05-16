@@ -1,15 +1,21 @@
 // src/pages/hirer/DocumentTracker.js
 // ═══════════════════════════════════════════════════════
-//  Document Tracker — Hirer View (Ultra-Premium White)
+//  Document Tracker — Hirer View (Ultra-Premium White) - Unified
 // ═══════════════════════════════════════════════════════
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { getHrTrackerDocuments, verifyCandidateDocument, rejectCandidateDocument } from "../../services/documentRequestService";
+import {
+    getHrTrackerUnifiedDocuments,
+    verifyUnifiedDocument,
+    rejectUnifiedDocument,
+    sendDocumentRequest,
+    generateRecommendedChecklist
+} from "../../services/unifiedDocumentService";
 import { getDoc, doc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { C } from "../shared/theme";
-import { FileText, Clock, CheckCircle, Download, Shield, Briefcase, ChevronRight } from "lucide-react";
+import { FileText, Clock, CheckCircle, Download, Shield, Briefcase, ChevronRight, UserPlus, FilePlus, Info } from "lucide-react";
 import jsPDF from "jspdf";
 
 const TEMPLATES = [
@@ -102,7 +108,7 @@ const TEMPLATES = [
     }
 ];
 
-export default function DocumentHub() {
+export default function DocumentTracker() {
     const { currentUser } = useAuth();
     const [tab, setTab] = useState("tracker");
     const [requests, setRequests] = useState([]);
@@ -114,6 +120,15 @@ export default function DocumentHub() {
     const [generating, setGenerating] = useState(false);
     const [success, setSuccess] = useState(false);
 
+    // New state for document request form
+    const [showRequestForm, setShowRequestForm] = useState(false);
+    const [selectedCandidateId, setSelectedCandidateId] = useState(null);
+    const [selectedJobId, setSelectedJobId] = useState("");
+    const [hrMessage, setHrMessage] = useState("");
+    const [recommendedChecklist, setRecommendedChecklist] = useState([]);
+    const [customDocName, setCustomDocName] = useState("");
+    const [customDocMandatory, setCustomDocMandatory] = useState(false);
+
     useEffect(() => {
         if (currentUser) {
             loadRequests();
@@ -123,7 +138,7 @@ export default function DocumentHub() {
     const loadRequests = async () => {
         setLoading(true);
         try {
-            const reqs = await getHrTrackerDocuments(currentUser.uid);
+            const reqs = await getHrTrackerUnifiedDocuments(currentUser.uid);
             
             const grouped = {};
             for (let r of reqs) {
@@ -141,18 +156,18 @@ export default function DocumentHub() {
 
     const handleVerify = async (docId) => {
         try {
-            await verifyCandidateDocument(docId);
+            await verifyUnifiedDocument(docId);
             loadRequests(); 
-        } catch (e) {}
+        } catch (e) { console.error("Failed to verify document:", e); }
     }
 
     const handleReject = async (docId) => {
         const reason = prompt("Enter reason for rejection:");
         if (!reason) return;
         try {
-            await rejectCandidateDocument(docId, reason);
+            await rejectUnifiedDocument(docId, reason);
             loadRequests();
-        } catch (e) {}
+        } catch (e) { console.error("Failed to reject document:", e); }
     }
 
     const handleSelectTemplate = (tmpl) => {
@@ -174,6 +189,46 @@ export default function DocumentHub() {
         setGenerating(false);
     };
 
+    const handleRequestDocuments = async (candidateId, jobId) => {
+        setSelectedCandidateId(candidateId);
+        setSelectedJobId(jobId || "");
+        // Defaulting to India for demonstration in recommended checklist
+        setRecommendedChecklist(generateRecommendedChecklist("IN", "IN", {})); 
+        setShowRequestForm(true);
+    };
+
+    const handleSendRequest = async () => {
+        if (!selectedCandidateId || (recommendedChecklist.length === 0 && !customDocName)) {
+            alert("Please select a candidate and at least one document.");
+            return;
+        }
+
+        const documentsToRequest = [...recommendedChecklist];
+        if (customDocName) {
+            documentsToRequest.push({
+                documentMasterId: `custom_${Date.now()}`,
+                name: customDocName,
+                category: "Custom",
+                mandatory: customDocMandatory,
+                status: "not_started",
+                smartNote: null
+            });
+        }
+
+        try {
+            await sendDocumentRequest(selectedJobId, selectedCandidateId, currentUser.uid, documentsToRequest, hrMessage);
+            alert("Document request sent successfully!");
+            setShowRequestForm(false);
+            setCustomDocName("");
+            setCustomDocMandatory(false);
+            setHrMessage("");
+            loadRequests();
+        } catch (e) {
+            console.error("Failed to send document request:", e);
+            alert("Failed to send document request.");
+        }
+    };
+
     const S = {
         container: { maxWidth: "1200px", margin: "0 auto", fontFamily: C.font },
         header: { marginBottom: "48px" },
@@ -185,15 +240,13 @@ export default function DocumentHub() {
             background: active ? "#fff" : "transparent",
             color: active ? "#0055FF" : "#64748B",
             fontWeight: 800, fontSize: "13px", cursor: "pointer",
-            boxShadow: active ? "0 4px 12px rgba(0,0,0,0.05)" : "none",
             transition: "all 0.2s", display: "flex", alignItems: "center", gap: "8px"
         }),
 
         card: {
             background: "#fff", borderRadius: "24px", border: "1px solid #E2E8F0",
             padding: "24px 32px", marginBottom: "16px", display: "flex", alignItems: "center",
-            justifyContent: "space-between", boxShadow: "0 4px 12px rgba(0,0,0,0.02)",
-            transition: "all 0.3s ease"
+            justifyContent: "space-between", boxShadow: "0 4px 12px rgba(0,0,0,0.02)"
         },
         left: { display: "flex", alignItems: "center", gap: "20px" },
         icon: (fulfilled) => ({
@@ -202,57 +255,28 @@ export default function DocumentHub() {
             color: fulfilled ? "#00B464" : "#F5A623",
             border: `1px solid ${fulfilled ? "rgba(0,180,100,0.1)" : "rgba(245,166,35,0.1)"}`
         }),
-        docType: { fontSize: "16px", fontWeight: 800, color: "#1D1D1F", marginBottom: "4px" },
-        meta: { fontSize: "13px", color: "#94A3B8", fontWeight: 600 },
-        statusBadge: (fulfilled) => ({
-            padding: "6px 14px", borderRadius: "100px", fontSize: "11px", fontWeight: 900,
-            textTransform: "uppercase", letterSpacing: "1px",
-            background: fulfilled ? "rgba(0,180,100,0.08)" : "rgba(245,166,35,0.08)",
-            color: fulfilled ? "#00B464" : "#F5A623",
-            border: `1px solid ${fulfilled ? "rgba(0,180,100,0.15)" : "rgba(245,166,35,0.15)"}`
-        }),
         downloadBtn: {
             background: "#1D1D1F", color: "#fff", border: "none", padding: "10px 20px",
             borderRadius: "12px", fontSize: "12px", fontWeight: 800, cursor: "pointer",
-            textTransform: "uppercase", letterSpacing: "1px", display: "flex", alignItems: "center", gap: "8px",
-            transition: "all 0.2s", boxShadow: "0 8px 20px rgba(0,0,0,0.1)"
+            display: "flex", alignItems: "center", gap: "8px"
         },
-        empty: {
-            textAlign: "center", padding: "120px 40px", background: "#fff", borderRadius: "32px",
-            border: "1px dashed #E2E8F0"
-        },
-
-        // Compliance styles
-        complianceGrid: { display: "grid", gridTemplateColumns: "400px 1fr", gap: "48px" },
         tmplCard: (active) => ({
             background: active ? "rgba(0,85,255,0.04)" : "#fff",
             border: `1px solid ${active ? "#0055FF" : "#E2E8F0"}`,
             borderRadius: "24px", padding: "24px", cursor: "pointer",
-            transition: "all 0.3s", display: "flex", alignItems: "flex-start", gap: "20px",
-            marginBottom: "16px", boxShadow: active ? "0 12px 24px -8px rgba(0,85,255,0.1)" : "0 4px 12px rgba(0,0,0,0.02)"
+            transition: "all 0.3s", display: "flex", alignItems: "flex-start", gap: "20px", marginBottom: "16px"
         }),
-        iconWrap: (active) => ({
-            width: "52px", height: "52px", borderRadius: "16px",
-            background: active ? "#0055FF" : "#F1F5F9",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: active ? "#fff" : "#94A3B8", flexShrink: 0, transition: "all 0.3s"
-        }),
-        tmplTitle: { fontSize: "16px", fontWeight: 800, color: "#1D1D1F", marginBottom: "6px" },
-        tmplDesc: { fontSize: "13px", color: "#94A3B8", lineHeight: 1.5, fontWeight: 500 },
-        formPanel: { background: "#fff", border: "1px solid #E2E8F0", borderRadius: "32px", padding: "40px", boxShadow: "0 24px 48px -12px rgba(0,0,0,0.05)" },
-        formTitle: { fontSize: "20px", fontWeight: 900, marginBottom: "32px", color: "#1D1D1F", borderBottom: "1px solid #F1F5F9", paddingBottom: "20px" },
-        input: {
-            width: "100%", background: "#fff", border: "1px solid #E2E8F0", borderRadius: "14px",
-            padding: "12px 16px", fontSize: "14px", color: "#1D1D1F", outline: "none", transition: "all 0.2s",
-            boxSizing: "border-box", fontWeight: 600
-        },
-        label: { display: "block", fontSize: "11px", color: "#94A3B8", marginBottom: "8px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "1px" },
+        formGroup: { marginBottom: "20px" },
+        label: { display: "block", fontSize: "11px", color: "#94A3B8", marginBottom: "8px", fontWeight: 800, textTransform: "uppercase" },
+        input: { width: "100%", background: "#fff", border: "1px solid #E2E8F0", borderRadius: "14px", padding: "12px 16px", fontSize: "14px", fontWeight: 600 },
         btn: {
-            width: "100%", background: "#1D1D1F", color: "#fff", border: "none", marginTop: "32px",
-            padding: "18px", borderRadius: "16px", fontWeight: 800, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: "12px",
-            fontSize: "13px", transition: "all 0.2s", textTransform: "uppercase", letterSpacing: "1.5px"
-        }
+            background: "#1D1D1F", color: "#fff", border: "none",
+            padding: "14px 24px", borderRadius: "12px", fontWeight: 800, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "10px",
+            fontSize: "13px", textTransform: "uppercase"
+        },
+        modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
+        modalContent: { background: "#fff", borderRadius: "32px", padding: "40px", width: "500px", maxHeight: "90vh", overflowY: "auto" }
     };
 
     return (
@@ -260,123 +284,141 @@ export default function DocumentHub() {
             <div style={S.header}>
                 <h1 style={S.title}>Document Hub</h1>
                 <div style={S.tabBar}>
-                    <button onClick={() => setTab("tracker")} style={S.tabBtn(tab === "tracker")}>
-                        <FileText size={18} /> Vault Tracker
+                    <button style={S.tabBtn(tab === "tracker")} onClick={() => setTab("tracker")}>
+                        <FileText size={20} /> Document Tracker
                     </button>
-                    <button onClick={() => setTab("compliance")} style={S.tabBtn(tab === "compliance")}>
-                        <Shield size={18} /> Compliance Templates
+                    <button style={S.tabBtn(tab === "compliance")} onClick={() => setTab("compliance")}>
+                        <Shield size={20} /> Compliance Templates
                     </button>
                 </div>
             </div>
 
             {tab === "tracker" && (
-                <>
+                <div>
                     {loading ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                            {[1, 2, 3].map(i => <div key={i} style={{ height: "100px", background: "#fff", borderRadius: "24px", border: "1px solid #E2E8F0", opacity: 0.5 }} />)}
-                        </div>
+                        <p>Loading document requests...</p>
                     ) : requests.length === 0 ? (
-                        <div style={S.empty}>
-                            <FileText size={64} color="#E2E8F0" style={{ marginBottom: "24px" }} />
-                            <h3 style={{ fontSize: "20px", fontWeight: 800, color: "#1D1D1F", margin: "0 0 8px" }}>No active requests</h3>
-                            <p style={{ fontSize: "14px", color: "#94A3B8", fontWeight: 500 }}>Request documents directly from the message interface.</p>
+                        <div style={{ textAlign: "center", padding: "100px" }}>
+                            <FileText size={48} color="#E2E8F0" />
+                            <p style={{ marginTop: "20px", color: "#94A3B8", fontWeight: 700 }}>No document requests yet.</p>
                         </div>
                     ) : (
-                        requests.map(group => (
-                            <div key={group.candidateId} style={{ ...S.card, flexDirection: "column", alignItems: "stretch", padding: "32px" }}>
-                                <div style={{ fontSize: "18px", fontWeight: 800, color: "#1D1D1F", marginBottom: "20px", borderBottom: "1px solid #E2E8F0", paddingBottom: "16px" }}>
-                                    Candidate: {group.candidateName}
-                                </div>
-                                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                                    {group.docs.map(docItem => {
-                                        const isUploaded = docItem.status === "uploaded";
-                                        const isVerified = docItem.status === "verified";
-                                        const isRejected = docItem.status === "rejected";
-                                        
-                                        return (
-                                            <div key={docItem.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px", background: "#F8FAFC", borderRadius: "16px", border: "1px solid #E2E8F0" }}>
-                                                <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                                                    <div style={S.icon(isVerified)}>
-                                                        {isVerified ? <CheckCircle size={20} /> : (isRejected ? <Shield size={20} color="#E53E3E" /> : <Clock size={20} />)}
-                                                    </div>
-                                                    <div>
-                                                        <div style={{ fontSize: "15px", fontWeight: 800, color: "#1D1D1F" }}>{docItem.name}</div>
-                                                        <div style={{ fontSize: "12px", color: "#64748B", fontWeight: 600, marginTop: "4px", textTransform: "uppercase" }}>
-                                                            STATUS: <span style={{ color: isVerified ? "#00B464" : (isRejected ? "#E53E3E" : (isUploaded ? "#0055FF" : "#F5A623")) }}>{docItem.status.replace("_", " ")}</span>
-                                                        </div>
-                                                    </div>
+                        <div>
+                            {requests.map(group => (
+                                <div key={group.candidateId} style={{ marginBottom: "40px" }}>
+                                    <h2 style={{ fontSize: "20px", fontWeight: 800, marginBottom: "20px", display: "flex", alignItems: "center", gap: "10px" }}>
+                                        <UserPlus size={24} /> {group.candidateName}
+                                        <button 
+                                            onClick={() => handleRequestDocuments(group.candidateId, "")}
+                                            style={{ ...S.btn, width: "auto", padding: "8px 16px", fontSize: "11px", borderRadius: "10px", marginLeft: "20px" }}
+                                        >
+                                            <FilePlus size={16} /> Request More Docs
+                                        </button>
+                                    </h2>
+                                    {group.docs.map(req => (
+                                        <div key={req.id} style={S.card}>
+                                            <div style={S.left}>
+                                                <div style={S.icon(req.status === "verified" || req.status === "uploaded")}>
+                                                    <FileText size={24} />
                                                 </div>
-                                                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                                                    {docItem.uploadedFileUrl && (
-                                                        <a href={docItem.uploadedFileUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
-                                                            <button style={{ ...S.downloadBtn, background: "#fff", color: "#1D1D1F", border: "1px solid #E2E8F0", boxShadow: "none" }}>View File</button>
-                                                        </a>
-                                                    )}
-                                                    {isUploaded && (
-                                                        <>
-                                                            <button onClick={() => handleVerify(docItem.id)} style={{ ...S.downloadBtn, background: "rgba(0,180,100,0.1)", color: "#00B464", boxShadow: "none" }}>Verify</button>
-                                                            <button onClick={() => handleReject(docItem.id)} style={{ ...S.downloadBtn, background: "rgba(229,62,62,0.1)", color: "#E53E3E", boxShadow: "none" }}>Reject</button>
-                                                        </>
-                                                    )}
+                                                <div>
+                                                    <div style={{ fontWeight: 800 }}>{req.name}</div>
+                                                    <div style={{ fontSize: "12px", color: "#94A3B8" }}>Status: {req.status}</div>
                                                 </div>
                                             </div>
-                                        );
-                                    })}
+                                            <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+                                                {req.uploadedFileUrl && (
+                                                    <a href={req.uploadedFileUrl} target="_blank" rel="noopener noreferrer" style={S.downloadBtn}>
+                                                        <Download size={18} /> View File
+                                                    </a>
+                                                )}
+                                                {req.status === "uploaded" && (
+                                                    <>
+                                                        <button onClick={() => handleVerify(req.id)} style={{ ...S.btn, background: "#00B464" }}>Verify</button>
+                                                        <button onClick={() => handleReject(req.id)} style={{ ...S.btn, background: "#EF4444" }}>Reject</button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
-                            </div>
-                        ))
+                            ))}
+                        </div>
                     )}
-                </>
+                </div>
             )}
 
             {tab === "compliance" && (
-                <div style={S.complianceGrid}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "40px" }}>
                     <div>
                         {TEMPLATES.map(tmpl => (
                             <div key={tmpl.id} style={S.tmplCard(selectedTemplate?.id === tmpl.id)} onClick={() => handleSelectTemplate(tmpl)}>
-                                <div style={S.iconWrap(selectedTemplate?.id === tmpl.id)}>{tmpl.icon}</div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={S.tmplTitle}>{tmpl.title}</div>
-                                    <div style={S.tmplDesc}>{tmpl.description}</div>
+                                <div style={{ background: "#F1F5F9", padding: "12px", borderRadius: "12px" }}>{tmpl.icon}</div>
+                                <div>
+                                    <div style={{ fontWeight: 800 }}>{tmpl.title}</div>
+                                    <div style={{ fontSize: "12px", color: "#94A3B8" }}>{tmpl.description}</div>
                                 </div>
-                                <ChevronRight size={20} color={selectedTemplate?.id === tmpl.id ? "#0055FF" : "#CBD5E1"} style={{ alignSelf: "center" }} />
                             </div>
                         ))}
                     </div>
+                    {selectedTemplate && (
+                        <div style={S.card}>
+                            <h2 style={{ fontSize: "24px", fontWeight: 800, marginBottom: "24px" }}>Generate {selectedTemplate.title}</h2>
+                            <form onSubmit={handleGenerate}>
+                                {selectedTemplate.fields.map(field => (
+                                    <div key={field.id} style={S.formGroup}>
+                                        <label style={S.label}>{field.label}</label>
+                                        <input type={field.type} style={S.input} value={formData[field.id] || ""} onChange={(e) => setFormData({ ...formData, [field.id]: e.target.value })} required />
+                                    </div>
+                                ))}
+                                <button type="submit" style={S.btn} disabled={generating}>
+                                    {generating ? "Generating..." : "Download PDF"}
+                                </button>
+                                {success && <p style={{ color: "#00B464", marginTop: "10px" }}>Generated successfully!</p>}
+                            </form>
+                        </div>
+                    )}
+                </div>
+            )}
 
-                    <div>
-                        {selectedTemplate ? (
-                            <div style={S.formPanel}>
-                                <div style={S.formTitle}>Strategic Draft: {selectedTemplate.title}</div>
-                                {success && (
-                                    <div style={{ background: "rgba(0,180,100,0.05)", border: "1px solid rgba(0,180,100,0.1)", borderRadius: "12px", padding: "16px", color: "#00B464", fontSize: "14px", fontWeight: 700, marginBottom: "24px" }}>
-                                        ✅ Deployment Successful: PDF generated and downloaded.
-                                    </div>
-                                )}
-                                <form onSubmit={handleGenerate}>
-                                    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-                                        {selectedTemplate.fields.map(f => (
-                                            <div key={f.id}>
-                                                <label style={S.label}>{f.label}</label>
-                                                <input type={f.type} style={S.input} value={formData[f.id]} onChange={(e) => setFormData({...formData, [f.id]: e.target.value})} required />
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <button type="submit" disabled={generating} style={S.btn}>
-                                        {generating ? "Deploying..." : <><Download size={18} /> Download Strategic PDF</>}
-                                    </button>
-                                </form>
+            {showRequestForm && (
+                <div style={S.modalOverlay}>
+                    <div style={S.modalContent}>
+                        <h2 style={{ fontSize: "24px", fontWeight: 900, marginBottom: "24px" }}>Request Documents</h2>
+                        <div style={S.formGroup}>
+                            <label style={S.label}>Job ID (Optional)</label>
+                            <input type="text" style={S.input} value={selectedJobId} onChange={e => setSelectedJobId(e.target.value)} />
+                        </div>
+                        
+                        <h3 style={{ fontSize: "16px", fontWeight: 800, marginTop: "20px" }}>Checklist</h3>
+                        {recommendedChecklist.map((item, index) => (
+                            <div key={index} style={{ display: "flex", alignItems: "center", margin: "8px 0" }}>
+                                <input type="checkbox" checked readOnly style={{ marginRight: "10px" }} />
+                                <label>{item.name} {item.mandatory && "(Required)"}</label>
                             </div>
-                        ) : (
-                            <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.5)", border: "2px dashed #E2E8F0", borderRadius: "32px", padding: "64px", textAlign: "center" }}>
-                                <FileText size={64} color="#E2E8F0" style={{ marginBottom: "24px" }} />
-                                <div style={{ fontSize: "16px", fontWeight: 700, color: "#94A3B8" }}>Select a strategic template to begin.</div>
+                        ))}
+
+                        <div style={{ marginTop: "20px" }}>
+                            <label style={S.label}>Custom Document</label>
+                            <input type="text" style={S.input} value={customDocName} onChange={e => setCustomDocName(e.target.value)} placeholder="e.g. Health Certificate" />
+                            <div style={{ display: "flex", alignItems: "center", marginTop: "8px" }}>
+                                <input type="checkbox" checked={customDocMandatory} onChange={e => setCustomDocMandatory(e.target.checked)} style={{ marginRight: "8px" }} />
+                                <label style={{ fontSize: "12px" }}>Mark as Mandatory</label>
                             </div>
-                        )}
+                        </div>
+
+                        <div style={{ marginTop: "20px" }}>
+                            <label style={S.label}>HR Message</label>
+                            <textarea style={{ ...S.input, minHeight: "80px" }} value={hrMessage} onChange={e => setHrMessage(e.target.value)} />
+                        </div>
+
+                        <div style={{ display: "flex", gap: "10px", marginTop: "30px" }}>
+                            <button onClick={handleSendRequest} style={{ ...S.btn, flex: 1 }}>Send Request</button>
+                            <button onClick={() => setShowRequestForm(false)} style={{ ...S.btn, background: "#E2E8F0", color: "#000", flex: 1 }}>Cancel</button>
+                        </div>
                     </div>
                 </div>
             )}
         </div>
     );
 }
-

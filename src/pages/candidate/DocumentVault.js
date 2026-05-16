@@ -1,6 +1,6 @@
 // src/pages/candidate/DocumentVault.js
 // ═══════════════════════════════════════════════════════
-//  Document Hub — Candidate View (Phase 7)
+//  Document Hub — Candidate View (Phase 7) - Unified
 // ═══════════════════════════════════════════════════════
 
 import React, { useState, useEffect } from "react";
@@ -8,14 +8,12 @@ import { Upload, FileText, Trash2, Clock, Eye, EyeOff, ShieldAlert, DownloadClou
 import { useAuth } from "../../context/AuthContext";
 import { C } from "../shared/theme";
 import {
-    uploadCandidateDocument,
-    getCandidateDocuments,
-    deleteCandidateDocument,
+    uploadPersonalDocument,
+    getCandidateUnifiedDocuments,
+    deleteUnifiedDocument,
     updateDocumentMetadata,
-    getDocumentRequests,
-    fulfillDocumentRequest
-} from "../../services/documentService";
-import { getCandidateDocuments as getChecklistDocuments, uploadCandidateDocument as uploadChecklistDocument } from "../../services/documentRequestService";
+    fulfillDocumentRequest,
+} from "../../services/unifiedDocumentService";
 import DocumentLearnMoreModal from "../../components/DocumentLearnMoreModal";
 import { updateProfile } from "../../services/profileService";
 
@@ -25,8 +23,8 @@ export default function DocumentVault() {
     const [pinInput, setPinInput] = useState("");
     const [pinError, setPinError] = useState("");
 
-    const [documents, setDocuments] = useState([]);
-    const [requests, setRequests] = useState([]);
+    const [documents, setDocuments] = useState([]); // Holding personal docs
+    const [requests, setRequests] = useState([]);   // Holding requested docs
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
 
@@ -35,7 +33,7 @@ export default function DocumentVault() {
     const [reqFile, setReqFile] = useState(null);
     const [reqNote, setReqNote] = useState("");
 
-    // Upload form state
+    // Upload form state for personal documents
     const [file, setFile] = useState(null);
     const [docCategory, setDocCategory] = useState("Resume");
     const [visibility, setVisibility] = useState("private");
@@ -73,30 +71,26 @@ export default function DocumentVault() {
     const loadDocuments = async () => {
         setLoading(true);
         try {
-            console.log("Loading documents for:", currentUser.uid);
-            const [docs, checklistItems] = await Promise.all([
-                getCandidateDocuments(currentUser.uid),
-                getChecklistDocuments(currentUser.uid)
-            ]);
+            console.log("Loading unified documents for:", currentUser.uid);
+            const allDocs = await getCandidateUnifiedDocuments(currentUser.uid);
             
-            console.log("Personal Vault Docs:", docs.length);
-            console.log("Checklist Items found:", checklistItems.length);
+            const personalDocs = allDocs.filter(d => d.type === "personal");
+            const requestedDocs = allDocs.filter(d => d.type === "requested");
 
-            const sortedDocs = (docs || []).sort((a, b) => {
+            const sortedPersonalDocs = (personalDocs || []).sort((a, b) => {
                 const dateA = a.createdAt?.seconds || 0;
                 const dateB = b.createdAt?.seconds || 0;
                 return dateB - dateA;
             });
-            setDocuments(sortedDocs);
+            setDocuments(sortedPersonalDocs);
             
-            // Safe sort: handle Firestore timestamps or nulls
-            const sortedRequests = (checklistItems || []).sort((a, b) => {
+            const sortedRequestedDocs = (requestedDocs || []).sort((a, b) => {
                 const dateA = a.createdAt?.seconds || 0;
                 const dateB = b.createdAt?.seconds || 0;
                 return dateB - dateA;
             });
-            
-            setRequests(sortedRequests);
+            setRequests(sortedRequestedDocs);
+
         } catch (e) {
             console.error("Error loading documents:", e);
         } finally {
@@ -104,30 +98,23 @@ export default function DocumentVault() {
         }
     };
 
-    const handleFulfillRequest = async (requestId, docId, hirerId) => {
-        try {
-            await fulfillDocumentRequest(requestId, docId, currentUser.uid, hirerId);
-            setRequests(requests.filter(r => r.id !== requestId));
-            alert("Document shared successfully!");
-        } catch (e) {
-            console.error(e);
-            alert("Failed to fulfill request.");
-        }
-    };
-
-    const handleChecklistUploadSubmit = async (reqId) => {
+    const handleFulfillRequest = async (requestId) => {
         if (!reqFile) return alert("Select a file first");
         setUploading(true);
         try {
-            await uploadChecklistDocument(reqId, reqFile, reqNote);
+            await fulfillDocumentRequest(requestId, reqFile, reqNote);
             setUploadModalReqId(null);
             setReqFile(null);
             setReqNote("");
             alert("Checklist document uploaded successfully!");
-            loadDocuments();
-        } catch (e) { console.error(e); alert("Failed to upload document."); }
-        setUploading(false);
-    }
+            loadDocuments(); // Refresh list
+        } catch (e) { 
+            console.error(e); 
+            alert("Failed to upload document for request."); 
+        } finally {
+            setUploading(false);
+        }
+    };
 
     const handleFileChange = (e) => {
         if (e.target.files && e.target.files[0]) {
@@ -140,7 +127,7 @@ export default function DocumentVault() {
         }
     };
 
-    const handleUpload = async (e) => {
+    const handleUploadPersonal = async (e) => {
         e.preventDefault();
         if (!file) return;
 
@@ -154,7 +141,7 @@ export default function DocumentVault() {
                 metadata.expiryDate = new Date(expiryDate).toISOString();
             }
 
-            await uploadCandidateDocument(file, currentUser.uid, metadata);
+            await uploadPersonalDocument(file, currentUser.uid, metadata);
             setFile(null);
             setExpiryDate("");
             await loadDocuments(); // Refresh list
@@ -169,8 +156,9 @@ export default function DocumentVault() {
     const handleDelete = async (docId, storagePath) => {
         if (!window.confirm("Are you sure you want to delete this document?")) return;
         try {
-            await deleteCandidateDocument(docId, storagePath);
+            await deleteUnifiedDocument(docId, storagePath);
             setDocuments(documents.filter(d => d.id !== docId));
+            setRequests(requests.filter(r => r.id !== docId));
         } catch (e) {
             console.error("Delete failed:", e);
             alert("Failed to delete document.");
@@ -292,203 +280,118 @@ export default function DocumentVault() {
         <div style={S.container}>
             <div style={S.header}>
                 <h1 style={S.title}>Document Vault</h1>
-                <p style={S.subtitle}>Secure, strategic storage for your professional compliance assets.</p>
+                <p style={S.subtitle}>SecureLY manage your personal documents and fulfill HR requests.</p>
             </div>
 
             <div style={S.grid}>
-
-                {/* UPLOAD PANEL */}
+                {/* Left Column: Upload & Requests */}
                 <div>
                     <div style={S.card}>
-                        <h2 style={S.cardTitle}><Upload size={20} /> Upload Asset</h2>
-
-                        <form onSubmit={handleUpload}>
+                        <h2 style={S.cardTitle}><Upload size={20} /> Upload Personal Document</h2>
+                        <form onSubmit={handleUploadPersonal}>
                             <div style={S.formGroup}>
                                 <label style={S.label}>Category</label>
-                                <div style={{ position: "relative" }}>
-                                    <select style={S.select} value={docCategory} onChange={e => setDocCategory(e.target.value)}>
-                                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                    <span className="material-symbols-outlined" style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", color: "#94A3B8", pointerEvents: "none" }}>expand_more</span>
-                                </div>
+                                <select style={S.select} value={docCategory} onChange={e => setDocCategory(e.target.value)}>
+                                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
                             </div>
 
                             <div style={{ position: "relative" }}>
                                 <input
                                     type="file"
                                     onChange={handleFileChange}
-                                    accept=".pdf,.jpg,.jpeg,.png,.docx"
                                     style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer" }}
                                 />
-                                <div style={S.uploadBox} onMouseEnter={e => e.currentTarget.style.borderColor = "#0055FF"} onMouseLeave={e => e.currentTarget.style.borderColor = "#E2E8F0"}>
-                                    <FileText size={40} color={file ? "#0055FF" : "#CBD5E1"} style={{ marginBottom: "16px" }} />
-                                    <div style={{ fontSize: "14px", fontWeight: 800, color: file ? "#1D1D1F" : "#94A3B8" }}>{file ? file.name : "Select Document"}</div>
-                                    <div style={{ fontSize: "12px", color: "#CBD5E1", marginTop: "4px", fontWeight: 600 }}>PDF, JPG, PNG (Max 10MB)</div>
+                                <div style={S.uploadBox}>
+                                    <FileText size={40} color={file ? "#0055FF" : "#CBD5E1"} />
+                                    <div style={{ fontSize: "14px", fontWeight: 800 }}>{file ? file.name : "Select Document"}</div>
                                 </div>
                             </div>
 
                             <div style={S.formGroup}>
-                                <label style={S.label}>Visibility Protocol</label>
-                                <div style={{ position: "relative" }}>
-                                    <select style={S.select} value={visibility} onChange={e => setVisibility(e.target.value)}>
-                                        <option value="private">Private (Shared manually)</option>
-                                        <option value="public">Public (Visible to Hirers)</option>
-                                    </select>
-                                    <span className="material-symbols-outlined" style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)", color: "#94A3B8", pointerEvents: "none" }}>expand_more</span>
-                                </div>
+                                <label style={S.label}>Visibility</label>
+                                <select style={S.select} value={visibility} onChange={e => setVisibility(e.target.value)}>
+                                    <option value="private">Private</option>
+                                    <option value="shared">Shared</option>
+                                    <option value="public">Public</option>
+                                </select>
                             </div>
 
                             <div style={S.formGroup}>
-                                <label style={S.label}>Expiry Window (Optional)</label>
-                                <input
-                                    type="date"
-                                    style={S.input}
-                                    value={expiryDate}
-                                    onChange={e => setExpiryDate(e.target.value)}
-                                />
+                                <label style={S.label}>Expiry Date</label>
+                                <input type="date" style={S.input} value={expiryDate} onChange={e => setExpiryDate(e.target.value)} />
                             </div>
 
-                            <button type="submit" disabled={!file || uploading} style={{ ...S.btn, opacity: (!file || uploading) ? 0.5 : 1 }}>
-                                {uploading ? "Uploading..." : "Secure to Vault"}
+                            <button type="submit" style={S.btn} disabled={uploading}>
+                                {uploading ? "Uploading..." : "Upload"}
                             </button>
                         </form>
                     </div>
 
-                    {/* COMPLIANCE CHECKLIST PANEL */}
-                    {requests.length > 0 && (
-                        <div style={{ ...S.card, marginTop: "32px", border: "1px solid #1D1D1F", background: "#F8FAFC" }}>
-                            <h2 style={{ ...S.cardTitle, color: "#1D1D1F", borderBottom: "1px solid #E2E8F0" }}><FileText size={20} /> Requested Compliance Checks</h2>
-                            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                                {requests.map(req => {
-                                    const isNotStarted = req.status === "not_started" || req.status === "rejected";
-                                    const isUploaded = req.status === "uploaded";
-                                    const isVerified = req.status === "verified";
-                                    const activeTarget = uploadModalReqId === req.id;
-
-                                    return (
-                                        <div key={req.id} style={{ background: "#fff", padding: "20px", borderRadius: "16px", border: "1px solid #E2E8F0", boxShadow: "0 2px 8px rgba(0,0,0,0.02)" }}>
-                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
-                                                <div>
-                                                    <div style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: 800, color: "#1D1D1F", fontSize: "16px" }}>
-                                                        {req.name}
-                                                        {req.mandatory && <span style={{ background: "rgba(220,50,50,0.1)", color: "#E53E3E", padding: "2px 6px", borderRadius: "4px", fontSize: "9px", textTransform: "uppercase" }}>Mandatory</span>}
-                                                    </div>
-                                                    <div style={{ fontSize: "11px", color: "#64748B", marginTop: "4px", fontWeight: 700, textTransform: "uppercase" }}>STATUS: 
-                                                        <span style={{ color: isVerified ? "#00B464" : (req.status==="rejected" ? "#E53E3E" : (isUploaded ? "#0055FF" : "#F5A623")), marginLeft: "4px" }}>
-                                                            {req.status.replace("_", " ")}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <button onClick={() => setInfoModalMasterId(req.documentMasterId)} style={{ background: "none", border: "none", color: "#0055FF", fontSize: "12px", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}><Info size={14}/> Learn More</button>
-                                            </div>
-
-                                            {req.hrNote && (
-                                                <div style={{ fontSize: "13px", color: "#1D1D1F", background: "#F1F5F9", padding: "12px", borderRadius: "12px", marginBottom: "16px", borderLeft: "4px solid #0055FF" }}>
-                                                    <strong>HR Note:</strong> {req.hrNote}
-                                                </div>
-                                            )}
-
-                                            {req.status === "rejected" && req.hrRejectionReason && (
-                                                <div style={{ fontSize: "13px", color: "#E53E3E", background: "rgba(229,62,62,0.1)", padding: "12px", borderRadius: "12px", marginBottom: "16px", fontWeight: 600 }}>
-                                                    <strong>Rejected:</strong> {req.hrRejectionReason}
-                                                </div>
-                                            )}
-
-                                            {(!isVerified && !isUploaded && !activeTarget) && (
-                                                <button onClick={() => setUploadModalReqId(req.id)} style={{ background: "#1D1D1F", color: "#fff", border: "none", borderRadius: "12px", padding: "10px 16px", fontSize: "12px", fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
-                                                    <UploadCloud size={16} /> Upload Document Now
-                                                </button>
-                                            )}
-
-                                            {activeTarget && (
-                                                <div style={{ background: "#F8FAFC", border: "1px dashed #0055FF", padding: "16px", borderRadius: "12px", marginTop: "12px" }}>
-                                                    <input type="file" onChange={e => setReqFile(e.target.files[0])} style={{ marginBottom: "12px", width: "100%" }} />
-                                                    <textarea placeholder="Add a note (optional)" value={reqNote} onChange={e => setReqNote(e.target.value)} style={{ ...S.input, minHeight: "60px", marginBottom: "12px" }} />
-                                                    <div style={{ display: "flex", gap: "8px" }}>
-                                                        <button onClick={() => handleChecklistUploadSubmit(req.id)} disabled={uploading} style={{ background: "#0055FF", color: "#fff", border: "none", borderRadius: "8px", padding: "8px 16px", fontSize: "11px", fontWeight: 800, cursor: "pointer" }}>{uploading ? "Uploading..." : "Submit File"}</button>
-                                                        <button onClick={() => setUploadModalReqId(null)} style={{ background: "transparent", color: "#64748B", border: "1px solid #E2E8F0", borderRadius: "8px", padding: "8px 16px", fontSize: "11px", fontWeight: 800, cursor: "pointer" }}>Cancel</button>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* VAULT LIST */}
-                <div>
-                    {loading ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                            {[1, 2, 3].map(i => <div key={i} style={{ height: "100px", background: "#fff", borderRadius: "24px", border: "1px solid #E2E8F0", opacity: 0.5 }} />)}
-                        </div>
-                    ) : documents.length === 0 ? (
-                        <div style={S.empty}>
-                            <ShieldAlert size={64} color="#E2E8F0" style={{ marginBottom: "24px" }} />
-                            <h3 style={{ fontSize: "20px", fontWeight: 800, color: "#1D1D1F", margin: "0 0 8px" }}>Vault is empty</h3>
-                            <p style={{ fontSize: "14px", color: "#94A3B8", fontWeight: 500 }}>Upload your resume, passport, and visas to streamline applications.</p>
-                        </div>
-                    ) : (
-                        documents.map(doc => {
-                            const expiryInfo = checkExpiry(doc.expiryDate);
-
-                            return (
-                                <div key={doc.id} style={S.docItem} onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"} onMouseLeave={e => e.currentTarget.style.transform = "none"}>
-                                    <div style={S.docLeft}>
-                                        <div style={S.docIcon}><FileText size={24} /></div>
-                                        <div>
-                                            <div style={S.docName}>{doc.docCategory}</div>
-                                            <div style={S.docMeta}>
-                                                <span style={{ color: "#1D1D1F" }}>{doc.fileName.length > 20 ? doc.fileName.slice(0, 20) + "..." : doc.fileName}</span>
-                                                <span>•</span>
-                                                <span>{(doc.size / 1024 / 1024).toFixed(2)} MB</span>
-
-                                                {/* Visibility Badge */}
-                                                <span
-                                                    onClick={() => toggleVisibility(doc)}
-                                                    style={{ cursor: "pointer", ...S.badge(doc.visibility === "public" ? "#10B981" : "#F59E0B") }}
-                                                >
-                                                    {doc.visibility === "public" ? <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Eye size={10} /> Public</span> : <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><EyeOff size={10} /> Private</span>}
-                                                </span>
-
-                                                {/* Expiry Alert Base */}
-                                                {expiryInfo && (
-                                                    <span style={{ display: "flex", alignItems: "center", gap: 4, color: expiryInfo.color, fontWeight: 800, fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                                                        <Clock size={12} /> {expiryInfo.text}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div style={S.actions}>
-                                        <a href={doc.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
-                                            <button style={S.iconBtn} title="Download/View" onMouseEnter={e => e.currentTarget.style.color = "#0055FF"} onMouseLeave={e => e.currentTarget.style.color = "#64748B"}>
-                                                <DownloadCloud size={18} />
-                                            </button>
-                                        </a>
-                                        <button 
-                                            style={S.iconBtn} 
-                                            onClick={() => handleDelete(doc.id, doc.storagePath)} 
-                                            title="Delete"
-                                            onMouseEnter={e => { e.currentTarget.style.color = "#EF4444"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.2)"; }}
-                                            onMouseLeave={e => { e.currentTarget.style.color = "#64748B"; e.currentTarget.style.borderColor = "#E2E8F0"; }}
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </div>
+                    {/* Document Requests Injected Here */}
+                    <div style={{...S.card, marginTop: "32px"}}>
+                        <h2 style={S.cardTitle}><FileText size={20} /> Requested Compliance</h2>
+                        {requests.length === 0 ? (
+                            <p style={{color: "#94A3B8"}}>No pending requests.</p>
+                        ) : (
+                            requests.map(req => (
+                                <div key={req.id} style={{background: "#F8FAFC", padding: "16px", borderRadius: "12px", marginBottom: "12px", border: "1px solid #E2E8F0"}}>
+                                    <div style={{fontWeight: 800}}>{req.name} {req.mandatory && "(Mandatory)"}</div>
+                                    <div style={{fontSize: "12px", color: "#64748B"}}>Status: {req.status}</div>
+                                    {req.status === "not_started" && (
+                                        <button onClick={() => setUploadModalReqId(req.id)} style={{...S.btn, padding: "8px 12px", height: "auto", marginTop: "8px"}}>Fulfill Request</button>
+                                    )}
                                 </div>
-                            );
-                        })
-                    )}
+                            ))
+                        )}
+                    </div>
                 </div>
 
+                {/* Right Column: Vault Documents */}
+                <div>
+                   {documents.length === 0 ? (
+                       <div style={S.empty}>No documents in vault.</div>
+                   ) : (
+                       documents.map(doc => {
+                           const expiryInfo = checkExpiry(doc.expiryDate);
+                           return (
+                               <div key={doc.id} style={S.docItem}>
+                                   <div style={S.docLeft}>
+                                       <div style={S.docIcon}><FileText /></div>
+                                       <div>
+                                           <div style={S.docName}>{doc.docCategory}</div>
+                                           <div style={S.docMeta}>
+                                               <span>{doc.fileName}</span>
+                                               {expiryInfo && <span style={{color: expiryInfo.color}}>{expiryInfo.text}</span>}
+                                               <span onClick={() => toggleVisibility(doc)} style={{cursor: "pointer"}}>{doc.visibility}</span>
+                                           </div>
+                                       </div>
+                                   </div>
+                                   <div style={S.actions}>
+                                       <a href={doc.url} target="_blank" rel="noreferrer"><DownloadCloud size={18} /></a>
+                                       <Trash2 onClick={() => handleDelete(doc.id, doc.storagePath)} style={{cursor: "pointer"}} size={18} />
+                                   </div>
+                               </div>
+                           )
+                       })
+                   )}
+                </div>
             </div>
+
+            {/* Modal for Request fulfillment */}
+            {uploadModalReqId && (
+                <div style={{position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000}}>
+                    <div style={{...S.card, width: "100%", maxWidth: "400px"}}>
+                        <h2 style={S.cardTitle}>Complete Request</h2>
+                        <input type="file" onChange={e => setReqFile(e.target.files[0])} style={S.input} />
+                        <textarea placeholder="Candidate note" value={reqNote} onChange={e => setReqNote(e.target.value)} style={{...S.input, marginTop: "12px"}} />
+                        <button onClick={() => handleFulfillRequest(uploadModalReqId)} style={{...S.btn, marginTop: "16px"}} disabled={uploading}>Submit</button>
+                        <button onClick={() => setUploadModalReqId(null)} style={{...S.btn, background: "#E2E8F0", color: "#000", marginTop: "8px"}}>Cancel</button>
+                    </div>
+                </div>
+            )}
 
             <DocumentLearnMoreModal masterId={infoModalMasterId} isOpen={!!infoModalMasterId} onClose={() => setInfoModalMasterId(null)} />
         </div>
     );
 }
-
